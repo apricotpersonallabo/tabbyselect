@@ -1,0 +1,21 @@
+{
+  "name": "tabby-select",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Development and test tooling for the TabbySelect browser extension.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "npm run test:unit && npm run test:package && npm run test:e2e:package",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:package": "node scripts/build-store-packages.mjs --output dist/store-packages --firefox-id tabby-select@tests.invalid && NO_UPDATE_NOTIFIER=1 web-ext lint --warnings-as-errors --source-dir dist/store-packages/firefox",
+    "test:e2e": "playwright test",
+    "test:e2e:package": "TABBYSELECT_EXTENSION_PATH=dist/store-packages/chromium playwright test",
+    "capture:store": "node scripts/capture-store-assets.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "web-ext": "10.6.0"
+  }
+}

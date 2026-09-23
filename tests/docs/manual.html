@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="TabbySelectの設定方法、キーボード操作、Playgroundを掲載した利用マニュアルです。" data-i18n-content="manualMetaDescription" />
+    <title data-i18n="manualTitle">使い方 | TabbySelect</title>
+    <link rel="icon" href="assets/icon-128.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="TabbySelect ホーム" data-i18n-aria-label="homeAriaLabel">
+        <img src="assets/icon-128.png" width="42" height="42" alt="" />
+        <span>TabbySelect</span>
+      </a>
+      <nav class="site-nav" aria-label="メインナビゲーション" data-i18n-aria-label="mainNavigation">
+        <a href="index.html" data-i18n="navOverview">概要</a>
+        <a class="active" href="manual.html" aria-current="page" data-i18n="navManual">使い方</a>
+        <a href="privacy.html" data-i18n="navPrivacy">プライバシー</a>
+        <a href="#" data-github-link target="_blank" rel="noreferrer">GitHub</a>
+        <button class="language-toggle" type="button" data-language-toggle>EN</button>
+      </nav>
+    </header>
+
+    <main class="manual-main shell">
+      <header class="manual-hero reveal">
+        <p class="eyebrow" data-i18n="manualEyebrow">MANUAL & PLAYGROUND</p>
+        <h1 data-i18n="manualHeading">使い方</h1>
+        <p data-i18n="manualLead">設定から基本操作までを順番に確認し、ページ下部のPlaygroundで実際の動きを試せます。</p>
+      </header>
+
+      <div class="manual-layout">
+        <aside class="toc" aria-label="目次" data-i18n-aria-label="tableOfContents">
+          <strong data-i18n="contents">目次</strong>
+          <a href="#setup" data-i18n="tocSetup">1. 初期設定</a>
+          <a href="#keyboard" data-i18n="tocKeyboard">2. キーボード操作</a>
+          <a href="#playground" data-i18n="tocPlayground">3. Playground</a>
+          <a href="#limitations" data-i18n="tocLimitations">4. 対象と制限</a>
+        </aside>
+
+        <div class="manual-content">
+          <section id="setup" class="manual-section">
+            <p class="section-index">01</p>
+            <h2 data-i18n="setupTitle">初期設定</h2>
+            <ol class="instruction-list">
+              <li><div><strong data-i18n="setupOneTitle">設定ページを開く</strong><p data-i18n="setupOneText">ツールバーのTabbySelectアイコンをクリックし、「設定ページを開く」を選択します。</p></div></li>
+              <li><div><strong data-i18n="setupTwoTitle">有効URLを指定する</strong><p data-i18n="setupTwoText">URLパターンを1行ずつ入力します。*は任意の文字列に一致します。空欄の場合は、すべてのhttp/https URLが対象です。</p><code>https://example.com/*</code></div></li>
+              <li><div><strong data-i18n="setupThreeTitle">対象ページでオンにする</strong><p data-i18n="setupThreeText">アイコンを再度クリックし、ポップアップのトグルをオンにします。設定変更は開いているページにも反映されます。</p></div></li>
+            </ol>
+          </section>
+
+          <section id="keyboard" class="manual-section">
+            <p class="section-index">02</p>
+            <h2 data-i18n="keyboardTitle">キーボード操作</h2>
+            <p data-i18n="keyboardIntro">Tabキーでselectにフォーカスしてから文字を入力します。マウスクリックでフォーカスした場合、そのフォーカス中は候補UIを表示しません。</p>
+            <div class="key-table" role="table" aria-label="キーボード操作" data-i18n-aria-label="keyboardTableLabel">
+              <div role="row"><span role="cell"><kbd>A–Z</kbd></span><span role="cell" data-i18n="keyType">先頭から一致する候補に絞り込む</span></div>
+              <div role="row"><span role="cell"><kbd>↑</kbd> <kbd>↓</kbd></span><span role="cell" data-i18n="keyArrows">候補のハイライトを移動する</span></div>
+              <div role="row"><span role="cell"><kbd>Backspace</kbd></span><span role="cell" data-i18n="keyBackspace">検索文字を1文字削除する</span></div>
+              <div role="row"><span role="cell"><kbd>Esc</kbd></span><span role="cell" data-i18n="keyEscape">検索をクリアし、空の状態でもう一度押すと候補を閉じる</span></div>
+              <div role="row"><span role="cell"><kbd>Enter</kbd></span><span role="cell" data-i18n="keyEnter">候補を確定して次の入力項目へ移動する</span></div>
+              <div role="row"><span role="cell"><kbd>Tab</kbd></span><span role="cell" data-i18n="keyTab">候補を確定して通常どおり次へ移動する</span></div>
+            </div>
+          </section>
+
+          <section id="playground" class="manual-section playground-section">
+            <p class="section-index">03</p>
+            <h2>Playground</h2>
+            <p data-i18n="playgroundIntro">拡張機能を有効にした状態で、下の「練習を始める」ボタンからTabキーでselectへ移動してください。文字入力、候補移動、確定を試せます。</p>
+            <div class="playground-note"><span>✦</span><p data-i18n="playgroundNote">このページでは拡張機能の動作を再実装していません。通常のselect要素に対する実際の拡張機能の動作を確認できます。</p></div>
+            <form class="playground-card" data-playground>
+              <button class="start-button" type="button" data-playground-start data-i18n="startPractice">練習を始める</button>
+
+              <label for="country" data-i18n="countryLabel">国・地域</label>
+              <select id="country" name="country" data-field-key="countryLabel">
+                <option value="" data-i18n="chooseOption">選択してください</option>
+                <option>Argentina</option><option>Australia</option><option>Brazil</option><option>Canada</option><option>China</option><option>France</option><option>Germany</option><option>India</option><option>Indonesia</option><option>Italy</option><option>Jamaica</option><option>Japan</option><option>Jordan</option><option>Mexico</option><option>New Zealand</option><option>Singapore</option><option>South Korea</option><option>Spain</option><option>Taiwan</option><option>United Kingdom</option><option>United States</option>
+              </select>
+
+              <label for="department" data-i18n="departmentLabel">部署</label>
+              <select id="department" name="department" data-field-key="departmentLabel">
+                <option value="" data-i18n="chooseOption">選択してください</option>
+                <option value="accounting" data-i18n="departmentAccounting">経理</option>
+                <option value="design" data-i18n="departmentDesign">デザイン</option>
+                <option value="engineering" data-i18n="departmentEngineering">開発</option>
+                <option value="marketing" data-i18n="departmentMarketing">マーケティング</option>
+                <option value="sales" data-i18n="departmentSales">営業</option>
+                <option value="support" data-i18n="departmentSupport">サポート</option>
+              </select>
+
+              <label for="priority" data-i18n="priorityLabel">優先度</label>
+              <select id="priority" name="priority" data-field-key="priorityLabel">
+                <option value="" data-i18n="chooseOption">選択してください</option>
+                <option value="low" data-i18n="priorityLow">低</option>
+                <option value="medium" data-i18n="priorityMedium">中</option>
+                <option value="high" data-i18n="priorityHigh">高</option>
+                <option value="urgent" data-i18n="priorityUrgent">緊急</option>
+              </select>
+
+              <button class="finish-button" type="button" data-playground-finish data-i18n="focusTarget">次のフォーカス先</button>
+              <div class="playground-output" aria-live="polite">
+                <strong data-i18n="currentSelection">現在の選択</strong>
+                <p data-selection-status data-i18n="nothingSelected">まだ選択されていません。</p>
+                <strong data-i18n="eventHistory">イベント履歴</strong>
+                <ol data-event-log><li data-i18n="noEvents">まだイベントはありません。</li></ol>
+              </div>
+            </form>
+          </section>
+
+          <section id="limitations" class="manual-section">
+            <p class="section-index">04</p>
+            <h2 data-i18n="limitationsTitle">対象と制限</h2>
+            <ul class="limitation-list">
+              <li data-i18n="limitationNative">対象はネイティブHTMLの単一選択selectです。独自UIのドロップダウンとselect[multiple]は対象外です。</li>
+              <li data-i18n="limitationDom">トップフレームの通常DOM内にあるselectが対象です。iframeとページ側Shadow DOM内は対象外です。</li>
+              <li data-i18n="limitationProtocol">有効化できるのはhttp://またはhttps://のページです。ブラウザ設定ページなどでは動作しません。</li>
+              <li data-i18n="limitationMouse">マウスでselectをクリックした場合、そのフォーカスが続く間はブラウザ標準の操作を優先します。</li>
+            </ul>
+          </section>
+
+          <section class="support-card">
+            <div><p class="eyebrow" data-i18n="needHelpEyebrow">NEED HELP?</p><h2 data-i18n="needHelpTitle">解決しない場合</h2><p data-i18n="needHelpText">状況と対象ページのURLを添えてお問い合わせください。</p></div>
+            <a class="button primary" href="mailto:apricot.personal.labo@gmail.com" data-i18n="contactUs">問い合わせる</a>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer shell">
+      <p>TabbySelect</p>
+      <div><a href="index.html" data-i18n="navOverview">概要</a><a href="privacy.html" data-i18n="navPrivacy">プライバシー</a><a href="mailto:apricot.personal.labo@gmail.com" data-i18n="contact">お問い合わせ</a><a href="#" data-github-link target="_blank" rel="noreferrer">GitHub</a></div>
+      <small>Copyright © 2026 apricot.personal.labo.</small>
+    </footer>
+  </body>
+</html>

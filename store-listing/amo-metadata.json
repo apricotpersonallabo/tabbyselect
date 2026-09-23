@@ -1,0 +1,23 @@
+{
+  "summary": {
+    "en-US": "Search native dropdown options by typing, then select with the keyboard on any enabled web page.",
+    "ja": "Webページのドロップダウンを文字入力で絞り込み、キーボードだけで素早く選択できるようにします。"
+  },
+  "categories": ["other"],
+  "homepage": {
+    "en-US": "https://apricotpersonallabo.github.io/tabbyselect/",
+    "ja": "https://apricotpersonallabo.github.io/tabbyselect/"
+  },
+  "support_url": {
+    "en-US": "https://apricotpersonallabo.github.io/tabbyselect/manual.html",
+    "ja": "https://apricotpersonallabo.github.io/tabbyselect/manual.html"
+  },
+  "support_email": {
+    "en-US": "apricot.personal.labo@gmail.com",
+    "ja": "apricot.personal.labo@gmail.com"
+  },
+  "version": {
+    "license": "Apache-2.0",
+    "approval_notes": "No account, external service, or test credentials are required. The source is plain, unobfuscated JavaScript and CSS included in the extension package. To test, open an http/https page with a native single-choice select, ensure the toolbar toggle is on, use Tab to focus the select, type the beginning of an option label, and press Enter or Tab to confirm. Mouse-click focus intentionally keeps native browser behavior. URLs, option content, and keyboard events are processed only on the user's device. No data is transmitted and no remote code, analytics, ads, tracking, or external APIs are used."
+  }
+}

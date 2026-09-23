@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="popupDocumentTitle">TabbySelect</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1 id="popupTitle" class="visually-hidden">TabbySelect</h1>
+
+      <label class="toggle-row" for="iconToggleEnabled">
+        <span class="toggle-label" data-i18n="enableExtension">Enable extension</span>
+        <span class="switch">
+          <input
+            id="iconToggleEnabled"
+            type="checkbox"
+            role="switch"
+            aria-label="Enable extension toggle"
+            data-i18n-aria-label="enableToggleAria"
+          />
+          <span class="slider" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p id="toggleHelp" class="toggle-help"></p>
+
+      <button id="openOptions" class="button" type="button" data-i18n="openOptions">
+        Open settings
+      </button>
+
+      <p id="status" class="status" aria-live="polite"></p>
+
+    </main>
+
+    <script src="shared.js"></script>
+    <script src="i18n.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

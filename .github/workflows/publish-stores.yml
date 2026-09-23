@@ -1,0 +1,155 @@
+name: Publish browser stores
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version from src/manifest.json
+        required: true
+        type: string
+      target:
+        description: Store to submit
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - chrome
+          - edge
+          - firefox
+      certification_notes:
+        description: Optional Edge certification notes
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Verify requested version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: node -e "const m=require('./src/manifest.json'); if (!/^\d+(?:\.\d+){0,3}$/.test(process.env.REQUESTED_VERSION) || m.version !== process.env.REQUESTED_VERSION) { throw new Error('workflow version must exactly match src/manifest.json'); }"
+      - name: Test store tooling
+        run: npm run test:unit && npm run test:package
+      - name: Build release store directories
+        run: node scripts/build-store-packages.mjs --output dist/store-packages --firefox-id tabbyselect@apricotpersonallabo.github.io
+      - name: Build submission archives
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir -p dist/artifacts
+          npx web-ext build --source-dir dist/store-packages/chromium --artifacts-dir dist/artifacts --filename "tabbyselect-${VERSION}-chromium.zip" --overwrite-dest
+          npx web-ext build --source-dir dist/store-packages/firefox --artifacts-dir dist/artifacts --filename "tabbyselect-${VERSION}-firefox.zip" --overwrite-dest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-packages-${{ inputs.version }}
+          path: |
+            dist/artifacts/*.zip
+            dist/store-packages/firefox/**
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: store-packages-${{ inputs.version }}
+          path: dist
+      - name: Publish submission archives to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: v${{ inputs.version }}
+          RELEASE_TITLE: TabbySelect ${{ inputs.version }}
+          CHROMIUM_ARCHIVE: dist/artifacts/tabbyselect-${{ inputs.version }}-chromium.zip
+          FIREFOX_ARCHIVE: dist/artifacts/tabbyselect-${{ inputs.version }}-firefox.zip
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$CHROMIUM_ARCHIVE" "$FIREFOX_ARCHIVE" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$CHROMIUM_ARCHIVE" "$FIREFOX_ARCHIVE" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TITLE" \
+              --generate-notes
+          fi
+
+  chrome:
+    if: inputs.target == 'all' || inputs.target == 'chrome'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: browser-stores
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: store-packages-${{ inputs.version }}
+          path: dist
+      - name: Upload and submit to Chrome Web Store
+        env:
+          CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
+          CHROME_EXTENSION_ID: ${{ vars.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ vars.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: node scripts/publish-chrome.mjs "dist/artifacts/tabbyselect-${{ inputs.version }}-chromium.zip" "${{ inputs.version }}"
+
+  edge:
+    if: inputs.target == 'all' || inputs.target == 'edge'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: browser-stores
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: store-packages-${{ inputs.version }}
+          path: dist
+      - name: Upload and submit to Microsoft Edge Add-ons
+        env:
+          EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ vars.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          EDGE_CERTIFICATION_NOTES: ${{ inputs.certification_notes }}
+        run: node scripts/publish-edge.mjs "dist/artifacts/tabbyselect-${{ inputs.version }}-chromium.zip" "${{ inputs.version }}"
+
+  firefox:
+    if: inputs.target == 'all' || inputs.target == 'firefox'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: browser-stores
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: store-packages-${{ inputs.version }}
+          path: dist
+      - name: Submit to Firefox Add-ons
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: npx web-ext sign --source-dir dist/store-packages/firefox --channel listed --amo-metadata store-listing/amo-metadata.json --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"

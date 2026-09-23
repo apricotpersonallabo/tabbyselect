@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="TabbySelectが端末内で処理する情報と、保存・共有・削除に関する方針を説明します。" data-i18n-content="privacyMetaDescription" />
+    <title data-i18n="privacyTitle">プライバシーポリシー | TabbySelect</title>
+    <link rel="icon" href="assets/icon-128.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="TabbySelect ホーム" data-i18n-aria-label="homeAriaLabel">
+        <img src="assets/icon-128.png" width="42" height="42" alt="" />
+        <span>TabbySelect</span>
+      </a>
+      <nav class="site-nav" aria-label="メインナビゲーション" data-i18n-aria-label="mainNavigation">
+        <a href="index.html" data-i18n="navOverview">概要</a>
+        <a href="manual.html" data-i18n="navManual">使い方</a>
+        <a class="active" href="privacy.html" aria-current="page" data-i18n="navPrivacy">プライバシー</a>
+        <a href="#" data-github-link target="_blank" rel="noreferrer" data-i18n="navGitHub">GitHub</a>
+        <button class="language-toggle" type="button" data-language-toggle>EN</button>
+      </nav>
+    </header>
+
+    <main class="privacy-main shell">
+      <header class="privacy-hero reveal">
+        <p class="eyebrow" data-i18n="privacyEyebrow">PRIVACY POLICY</p>
+        <h1 data-i18n="privacyHeading">プライバシーポリシー</h1>
+        <p class="privacy-updated" data-i18n="privacyUpdated">最終更新日: 2026年9月22日</p>
+        <p class="privacy-intro" data-i18n="privacyIntro">TabbySelectは、ネイティブHTML select要素のキーボード検索と、現在のページで拡張機能を有効にするかを判断するために必要な情報だけを端末内で処理します。</p>
+      </header>
+
+      <section class="privacy-section">
+        <h2 data-i18n="privacyProcessedTitle">処理する情報</h2>
+        <ul>
+          <li data-i18n="privacyProcessedUrl">現在のタブURL。有効URLパターンとの照合とツールバーアイコンの状態表示に使用します。</li>
+          <li data-i18n="privacyProcessedContent">ネイティブselect要素の選択肢テキストと状態。候補の表示と絞り込みに使用します。</li>
+          <li data-i18n="privacyProcessedActivity">対応するselect要素にフォーカスしている間のキー入力とフォーカスイベント。検索、候補移動、選択確定に使用します。</li>
+          <li data-i18n="privacyProcessedSettings">有効URLパターン、有効・無効状態、デバッグ設定などの拡張機能設定。chrome.storage.localを使って端末内に保存します。</li>
+        </ul>
+      </section>
+
+      <section class="privacy-section">
+        <h2 data-i18n="privacySharingTitle">収集・送信・共有</h2>
+        <p data-i18n="privacySharingText">TabbySelectは、これらの情報を開発者または第三者のサーバーへ送信、販売、共有しません。広告、解析、トラッキング、外部API、リモートコード、開発者が運用するサーバーは使用しません。</p>
+      </section>
+
+      <section class="privacy-section">
+        <h2 data-i18n="privacyRetentionTitle">保存期間と削除</h2>
+        <p data-i18n="privacyRetentionText">ページ内容、URL、キー入力は機能提供中だけ一時的に処理され、開発者には保存されません。拡張機能設定は端末内に残り、設定ページで変更するか、拡張機能をアンインストールすることで削除できます。</p>
+      </section>
+
+      <section class="privacy-section">
+        <h2 data-i18n="privacyPermissionsTitle">ブラウザ権限</h2>
+        <p data-i18n="privacyPermissionsText">storage権限は設定保存に、tabs権限とWebサイトへのアクセスはURL判定、アイコン更新、select要素への機能提供に使用します。権限はこの単一目的のためだけに使用します。</p>
+      </section>
+
+      <section class="privacy-section">
+        <h2 data-i18n="privacyChangesTitle">ポリシーの変更</h2>
+        <p data-i18n="privacyChangesText">機能またはデータ取扱いを変更する場合は、このページを更新し、最終更新日を変更します。</p>
+      </section>
+
+      <section class="privacy-section">
+        <h2 data-i18n="privacyContactTitle">お問い合わせ</h2>
+        <p data-i18n="privacyContactText">本ポリシーに関する質問は、apricot.personal.labo@gmail.com までお送りください。</p>
+      </section>
+    </main>
+
+    <footer class="site-footer shell">
+      <p>TabbySelect</p>
+      <div><a href="index.html" data-i18n="navOverview">概要</a><a href="manual.html" data-i18n="navManual">使い方</a><a href="mailto:apricot.personal.labo@gmail.com" data-i18n="contact">お問い合わせ</a><a href="#" data-github-link target="_blank" rel="noreferrer">GitHub</a></div>
+      <small>Copyright © 2026 apricot.personal.labo.</small>
+    </footer>
+  </body>
+</html>
