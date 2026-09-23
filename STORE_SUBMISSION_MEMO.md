@@ -383,8 +383,8 @@ Initial release.
 
 - Chrome / Edge: 同じChromium向けZIPを使用
 - Firefox: 配布時にGecko ID、Firefox用background scripts、最小バージョン、データ非収集宣言を追加したZIPを使用
-- GitHub Actions: `Publish browser stores` を `main` から実行
-- `version`: `src/manifest.json` と同じ値を指定
+- GitHub Actions: `src/manifest.json` の `main` への反映時にタグとReleaseを自動作成。ストア申請時は `Release and publish browser stores` を `main` から手動実行
+- `version`: `src/manifest.json` から自動取得
 - `target`: 初回は `all`。部分失敗時は失敗したストアだけを再実行
 - Edgeの `certification_notes`: 上記Certification notesを使用
 - GitHub Releases: `v<version>`にChromium向けZIPとFirefox向けZIPが掲載される。同じバージョンの再実行時は既存ZIPが上書きされる

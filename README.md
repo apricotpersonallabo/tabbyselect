@@ -27,7 +27,7 @@ The release version uses `major.minor.patch` format. Keep the following files al
 - `package-lock.json`
 - `STORE_SUBMISSION_MEMO.md`
 
-The version submitted through GitHub Actions must exactly match `src/manifest.json` and must be newer than the version already submitted to each browser store.
+The release workflow reads the release version directly from `src/manifest.json`. That version must be newer than the version already submitted to each browser store.
 
 ## Repository layout
 
@@ -58,9 +58,9 @@ Individual test commands are also available:
 
 The `Test browser extension` GitHub Actions workflow runs on pushes and pull requests targeting `main`.
 
-## Automated store submissions
+## Automated releases and store submissions
 
-Run the `Publish browser stores` workflow manually from `main`. Supply the version from `src/manifest.json` and select `all`, `chrome`, `edge`, or `firefox`. The workflow builds the Chromium and Firefox ZIP files, publishes them on the `v<version>` GitHub Release, and submits the selected packages for store review.
+When a change to `src/manifest.json` is pushed to `main`, the `Release and publish browser stores` workflow reads its version, builds the Chromium and Firefox ZIP files, and automatically creates the `v<version>` tag and GitHub Release. To submit packages for store review, run the same workflow manually from `main` and select `all`, `chrome`, `edge`, or `firefox`.
 
 Configure the `browser-stores` GitHub Environment before submitting:
 
