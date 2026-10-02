@@ -67,6 +67,7 @@
     chromeApi: chrome,
     onStateChange({ active, settings, url }) {
       debugLogEnabled = settings.debugLogEnabled;
+      session.setSearchMode(settings.searchMode);
       if (active) {
         featureRuntime.enable();
       } else {

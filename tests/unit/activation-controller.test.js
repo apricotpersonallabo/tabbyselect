@@ -86,6 +86,19 @@ test("setting changes during loading survive the initial storage response", () =
   assert.equal(states.at(-1).active, true);
 });
 
+test("propagates the search mode during initialization and later changes", () => {
+  const { controller, chromeApi, storageCallbacks, urlCallbacks, states } = setup();
+  controller.start();
+  chromeApi.storage.onChanged.fire({ searchMode: { newValue: "contains" } }, "local");
+  storageCallbacks[0](core.DEFAULT_SETTINGS);
+  urlCallbacks[0]({ url: "https://parent.example/" });
+  assert.equal(states.at(-1).settings.searchMode, "contains");
+  assert.equal(states.at(-1).active, true);
+  chromeApi.storage.onChanged.fire({ searchMode: { newValue: "prefix" } }, "local");
+  assert.equal(states.at(-1).settings.searchMode, "prefix");
+  assert.equal(states.at(-1).active, true);
+});
+
 for (const response of [undefined, { url: null }, { url: 123 }, { url: "about:blank" }]) {
   test(`stays disabled with an unavailable or unsupported top URL: ${JSON.stringify(response)}`, () => {
     const { controller, storageCallbacks, urlCallbacks, states } = setup();

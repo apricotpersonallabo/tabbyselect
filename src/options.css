@@ -14,6 +14,11 @@ h1 { margin: 0; font-size: clamp(1.125rem, 2vw, 1.25rem); line-height: 1.4; colo
 .area-title+.section, .area-title-subtle+.section { margin-top: 0; padding-top: 0; border-top: none; }
 .section-title { margin: 0 0 0.625rem; font-weight: 700; letter-spacing: 0.02em; color: #0f172a; }
 label { display: flex; align-items: center; gap: 0.625rem; font-weight: 600; }
+.search-modes { display: grid; gap: 0.625rem; margin-top: 0.75rem; }
+.search-mode { align-items: flex-start; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; cursor: pointer; }
+.search-mode:has(input:checked) { border-color: #0f766e; background: #f0fdfa; }
+.search-mode input { margin: 0.2rem 0 0; accent-color: #0f766e; flex-shrink: 0; }
+.search-mode small { display: block; margin-top: 0.25rem; color: #4b5563; font-weight: 400; line-height: 1.5; }
 textarea { width: 100%; min-height: clamp(8rem, 30vh, 14rem); margin-top: 0.625rem; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.625rem; font-family: Consolas, "Courier New", monospace; line-height: 1.4; resize: vertical; }
 code { font-family: Consolas, "Courier New", monospace; background: #f1f5f9; border-radius: 0.25rem; padding: 0.0625em 0.25em; }
 .description { margin-top: 0.5rem; margin-bottom: 0; color: #4b5563; line-height: 1.5; }

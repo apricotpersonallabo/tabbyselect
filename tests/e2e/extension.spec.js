@@ -113,6 +113,25 @@ function pageMarkup() {
     </html>`;
 }
 
+function searchPageMarkup() {
+  return `<!doctype html><html><body>
+    <button id="searchBefore">Before</button>
+    <select id="searchSelect">
+      <option>Initial</option><option>Japan</option><option>Panama</option>
+      <option>Japanese</option><option>New Japan</option><option value=""></option>
+      <option disabled>Japan disabled</option>
+      <optgroup label="Disabled" disabled><option>Japan grouped</option></optgroup>
+    </select>
+    <button id="searchAfter">After</button>
+    <script>
+      window.searchEvents = { input: 0, change: 0 };
+      for (const type of ['input', 'change']) {
+        document.getElementById('searchSelect').addEventListener(type, () => window.searchEvents[type]++);
+      }
+    </script>
+  </body></html>`;
+}
+
 async function setSettings(settings) {
   await worker.evaluate((value) => chrome.storage.local.set(value), settings);
 }
@@ -136,6 +155,11 @@ test.beforeAll(async () => {
       "/support/assets/icon-128.png": ["assets/icon-128.png", "image/png"]
     };
     const pathname = new URL(request.url, "http://127.0.0.1").pathname;
+    if (pathname === "/allowed/search") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(searchPageMarkup());
+      return;
+    }
     if (pathname.endsWith("/frames")) {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       response.end(framesPageMarkup());
@@ -621,4 +645,147 @@ test("renders the popup and URL settings", async () => {
   );
   await popup.close();
   await options.close();
+});
+
+test("saves and reloads the search mode without overwriting other settings", async () => {
+  const allowedPattern = `http://127.0.0.1:${port}/allowed/*`;
+  await setSettings({ urlAllowPatterns: allowedPattern, manualEnabledOverride: true });
+  await worker.evaluate(() => chrome.storage.local.remove("searchMode"));
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator("#searchModePrefix")).toBeEnabled();
+  await expect(options.locator("#searchModePrefix")).toBeChecked();
+  await expect(options.locator("#searchModeContains")).not.toBeChecked();
+  await expect(options.locator("#search-settings-title")).toHaveText("Search mode");
+  // Change another control without submitting it; mode saving must not copy that value.
+  await options.locator("#urlAllowPatterns").evaluate((input) => { input.value = "unsaved"; });
+  await options.locator("#searchModeContains").check();
+  await expect(options.locator("#status")).toHaveText("Settings saved.");
+  expect(await worker.evaluate(() => chrome.storage.local.get(["searchMode", "urlAllowPatterns"])))
+    .toEqual({ searchMode: "contains", urlAllowPatterns: allowedPattern });
+  await options.reload();
+  await expect(options.locator("#searchModeContains")).toBeEnabled();
+  await expect(options.locator("#searchModeContains")).toBeChecked();
+  await options.locator("#searchModePrefix").evaluate((input) => { input.checked = true; });
+  await options.locator("#urlAllowPatterns").fill(`${allowedPattern}\nhttps://example.com/*`);
+  await options.locator("#search-settings-title").click();
+  await expect.poll(() => worker.evaluate(() => chrome.storage.local.get("urlAllowPatterns")))
+    .toEqual({ urlAllowPatterns: `${allowedPattern}\nhttps://example.com/*` });
+  expect(await worker.evaluate(() => chrome.storage.local.get("searchMode")))
+    .toEqual({ searchMode: "contains" });
+  await options.reload();
+  await expect(options.locator("#searchModeContains")).toBeChecked();
+  await options.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-search-options.png"), fullPage: true });
+  await options.close();
+});
+
+test("updates an active search without committing and preserves keyboard selection", async () => {
+  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const items = page.locator("[data-tabby-select-host] .item");
+  const query = page.locator("[data-tabby-select-host] .query span").first();
+  const pending = page.locator("[data-tabby-select-host] .pending");
+  await page.locator("#searchBefore").click();
+  await select.focus();
+  await waitForSuggestion(page);
+  await expect(items).toHaveCount(6);
+  await page.keyboard.type("pan");
+  await expect(items).toHaveText(["Panama"]);
+  await expect(pending).toHaveText("Panama");
+
+  await setSettings({ searchMode: "contains" });
+  await expect(query).toHaveText("pan");
+  await expect(items).toHaveText(["Japan", "Panama", "Japanese", "New Japan"]);
+  await expect(pending).toHaveText("Japan");
+  await expect(select).toHaveJSProperty("selectedIndex", 0);
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await setSettings({ searchMode: "prefix" });
+  await expect(items).toHaveText(["Panama"]);
+  await expect(pending).toHaveText("Panama");
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await setSettings({ searchMode: "contains" });
+  await expect(pending).toHaveText("Japan");
+  await page.keyboard.press("Enter");
+  await expect(select).toHaveJSProperty("selectedIndex", 1);
+  await expect(page.locator("#searchAfter")).toBeFocused();
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+
+  await select.focus();
+  await page.keyboard.type("pan");
+  await expect(pending).toHaveText("Panama");
+  await page.keyboard.press("ArrowDown");
+  await expect(pending).toHaveText("Japanese");
+  await page.keyboard.press("Tab");
+  await expect(select).toHaveJSProperty("selectedIndex", 3);
+  await expect(page.locator("#searchAfter")).toBeFocused();
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 2, change: 2 });
+
+  await select.focus();
+  await page.keyboard.type("pan");
+  await expect(pending).toHaveText("New Japan");
+  await page.keyboard.press("ArrowDown");
+  await expect(pending).toHaveText("Japan");
+  await page.keyboard.press("ArrowUp");
+  await expect(pending).toHaveText("New Japan");
+  await page.keyboard.press("Escape");
+  await expect(items).toHaveCount(6);
+  await page.keyboard.type(" Japan ");
+  await expect(items).toHaveText(["Japan", "Japanese", "New Japan"]);
+  await page.keyboard.press("Escape");
+  await page.keyboard.type("zzz");
+  await expect(items).toHaveText(["No matching options"]);
+  await page.keyboard.press("Enter");
+  await expect(select).toHaveJSProperty("selectedIndex", 3);
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 2, change: 2 });
+  await page.close();
+});
+
+test("applies search mode changes to all frame types", async () => {
+  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
+  for (const name of ["same", "cross", "nested", "blank", "srcdoc"]) {
+    const frame = page.frame({ name });
+    await setSettings({ searchMode: "prefix" });
+    await frame.locator("#frameSelect").evaluate((select) => {
+      select.innerHTML = '<option>Initial</option><option>Japan</option>';
+      window.searchEvents = { input: 0, change: 0 };
+      for (const type of ["input", "change"]) {
+        select.addEventListener(type, () => window.searchEvents[type]++);
+      }
+    });
+    await openFrameSuggestion(frame);
+    await page.keyboard.type("pan");
+    await expect(frame.locator("[data-tabby-select-host] .item")).toHaveText(["No matching options"]);
+    await setSettings({ searchMode: "contains" });
+    await expect(frame.locator("[data-tabby-select-host] .query span").first()).toHaveText("pan");
+    await expect(frame.locator("[data-tabby-select-host] .pending")).toHaveText("Japan");
+    await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 0);
+    expect(await frame.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+    await setSettings({ searchMode: "prefix" });
+    await expect(frame.locator("[data-tabby-select-host] .item")).toHaveText(["No matching options"]);
+    await expect(frame.locator("[data-tabby-select-host] .pending")).toHaveCount(0);
+    await setSettings({ searchMode: "contains" });
+    await expect(frame.locator("[data-tabby-select-host] .pending")).toHaveText("Japan");
+    await page.keyboard.press("Enter");
+    await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 1);
+    await expect(frame.locator("#frameAfter")).toBeFocused();
+    expect(await frame.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+  }
+  await page.evaluate(() => {
+    const frame = document.createElement("iframe");
+    frame.name = "dynamicSearch";
+    frame.src = "/frames/select";
+    document.body.appendChild(frame);
+  });
+  await expect.poll(() => page.frames().some((frame) => frame.name() === "dynamicSearch")).toBe(true);
+  const dynamic = page.frame({ name: "dynamicSearch" });
+  await openFrameSuggestion(dynamic);
+  await page.keyboard.type("get");
+  await expect(dynamic.locator("[data-tabby-select-host] .pending")).toHaveText("Target");
+  await page.keyboard.press("Tab");
+  await expect(dynamic.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 2);
+  await page.close();
 });

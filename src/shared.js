@@ -12,12 +12,14 @@
   const STORAGE_KEYS = Object.freeze({
     debugLogEnabled: "debugLogEnabled",
     urlAllowPatterns: "urlAllowPatterns",
-    manualEnabledOverride: "manualEnabledOverride"
+    manualEnabledOverride: "manualEnabledOverride",
+    searchMode: "searchMode"
   });
   const DEFAULT_SETTINGS = Object.freeze({
     debugLogEnabled: false,
     urlAllowPatterns: "",
-    manualEnabledOverride: true
+    manualEnabledOverride: true,
+    searchMode: "prefix"
   });
   const DEFAULT_METADATA = Object.freeze({
     contactEmail: "Not configured",
@@ -25,6 +27,18 @@
   });
   const URL_CHANGED_MESSAGE_TYPE = "tabby-select:url-changed";
   const GET_TOP_URL_MESSAGE_TYPE = "tabby-select:get-top-url";
+
+  function normalizeSearchMode(value) {
+    return value === "contains" ? "contains" : "prefix";
+  }
+
+  function matchesSearchText(text, query, mode = DEFAULT_SETTINGS.searchMode) {
+    const normalizedText = text.trim().toLowerCase();
+    const normalizedQuery = query.trim().toLowerCase();
+    return normalizeSearchMode(mode) === "contains"
+      ? normalizedText.includes(normalizedQuery)
+      : normalizedText.startsWith(normalizedQuery);
+  }
 
   function normalizeSettings(value) {
     const input = value && typeof value === "object" ? value : {};
@@ -37,7 +51,8 @@
       manualEnabledOverride:
         typeof input[STORAGE_KEYS.manualEnabledOverride] === "undefined"
           ? DEFAULT_SETTINGS.manualEnabledOverride
-          : Boolean(input[STORAGE_KEYS.manualEnabledOverride])
+          : Boolean(input[STORAGE_KEYS.manualEnabledOverride]),
+      searchMode: normalizeSearchMode(input[STORAGE_KEYS.searchMode])
     };
   }
 
@@ -132,6 +147,8 @@
     DEFAULT_METADATA,
     URL_CHANGED_MESSAGE_TYPE,
     GET_TOP_URL_MESSAGE_TYPE,
+    normalizeSearchMode,
+    matchesSearchText,
     normalizeSettings,
     normalizeMetadata,
     loadMetadata,

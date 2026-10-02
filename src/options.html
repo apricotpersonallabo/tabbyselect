@@ -29,6 +29,22 @@ https://example.com/*
 https://*.example.org/forms/*"></textarea>
       </section>
 
+      <section class="section" aria-labelledby="search-settings-title">
+        <h3 id="search-settings-title" class="section-title" data-i18n="searchSettingsTitle">Search mode</h3>
+        <p id="search-description" class="description" data-i18n="searchDescription">Choose how option text is matched. Changes are saved automatically and apply to open pages.</p>
+        <div class="search-modes" role="radiogroup" aria-labelledby="search-settings-title" aria-describedby="search-description">
+          <label class="search-mode" for="searchModePrefix">
+            <input id="searchModePrefix" name="searchMode" type="radio" value="prefix" checked disabled />
+            <span><span data-i18n="searchModePrefix">Prefix match</span><small data-i18n="searchModePrefixDescription">Matches the beginning of the option text. Example: Ja matches Japan.</small></span>
+          </label>
+          <label class="search-mode" for="searchModeContains">
+            <input id="searchModeContains" name="searchMode" type="radio" value="contains" disabled />
+            <span><span data-i18n="searchModeContains">Contains match</span><small data-i18n="searchModeContainsDescription">Matches anywhere in the option text. Example: pan matches Japan.</small></span>
+          </label>
+        </div>
+        <p class="description" data-i18n="searchCaseDescription">Both modes ignore uppercase and lowercase differences.</p>
+      </section>
+
       <div id="status" class="status" aria-live="polite"></div>
     </section>
 

@@ -13,9 +13,41 @@ test("normalizes settings with stable defaults", () => {
     {
       debugLogEnabled: true,
       urlAllowPatterns: "",
-      manualEnabledOverride: false
+      manualEnabledOverride: false,
+      searchMode: "prefix"
     }
   );
+});
+
+test("defaults missing and invalid search modes to prefix", () => {
+  for (const searchMode of [undefined, null, "", "suffix", "CONTAINS", 1, true]) {
+    assert.equal(core.normalizeSettings({ searchMode }).searchMode, "prefix");
+  }
+  assert.equal(core.normalizeSettings({ searchMode: "prefix" }).searchMode, "prefix");
+  assert.equal(core.normalizeSettings({ searchMode: "contains" }).searchMode, "contains");
+});
+
+test("matches prefix and contains queries with the same case and whitespace rules", () => {
+  for (const [text, query, mode, expected] of [
+    ["Japan", "Ja", "prefix", true],
+    ["Japan", "pan", "prefix", false],
+    ["Japan", "pan", "contains", true],
+    ["Japan", "Ja", "contains", true],
+    [" Japan ", " jA ", "prefix", true],
+    [" Japan ", " PAN ", "contains", true],
+    ["Japan", "zzz", "contains", false],
+    ["Japan", "Japanese", "contains", false],
+    ["", "pan", "contains", false],
+    ["", "", "prefix", true],
+    ["Japan", "  ", "contains", true],
+    ["New Japan", "Japan", "contains", true],
+    ["New Japan", "Japan", "prefix", false],
+    ["Japan", "pan", "invalid", false],
+    ["Japan", "pan", undefined, false]
+  ]) {
+    assert.equal(core.matchesSearchText(text, query, mode), expected,
+      JSON.stringify({ text, query, mode }));
+  }
 });
 
 test("parses URL patterns and applies HTTP(S)-only wildcard matching", () => {

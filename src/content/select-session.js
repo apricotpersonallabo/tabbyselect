@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  const core = globalThis.TabbySelectCore;
+
   const namespace =
     globalThis.TabbySelectContent || (globalThis.TabbySelectContent = {});
 
@@ -24,10 +26,7 @@
     let optionObserver = null;
     let removalObserver = null;
     let copyright = initialCopyright;
-
-    function normalize(text) {
-      return text.trim().toLowerCase();
-    }
+    let searchMode = core.DEFAULT_SETTINGS.searchMode;
 
     function getOptionText(option) {
       return (option.textContent || option.label || "").trim();
@@ -45,7 +44,6 @@
     }
 
     function getSuggestions(select, rawQuery) {
-      const normalizedQuery = normalize(rawQuery);
       const suggestions = [];
       for (let index = 0; index < select.options.length; index += 1) {
         const option = select.options[index];
@@ -53,7 +51,7 @@
           continue;
         }
         const text = getOptionText(option);
-        if (!normalizedQuery || (text && normalize(text).startsWith(normalizedQuery))) {
+        if (core.matchesSearchText(text, rawQuery, searchMode)) {
           suggestions.push({ index, text: text || emptyOptionLabel });
         }
       }
@@ -61,8 +59,7 @@
     }
 
     function findMatchingOption(select, rawQuery) {
-      const normalizedQuery = normalize(rawQuery);
-      if (!normalizedQuery) {
+      if (!rawQuery.trim()) {
         return -1;
       }
 
@@ -73,8 +70,7 @@
         if (!isOptionSelectable(option)) {
           continue;
         }
-        const text = normalize(getOptionText(option));
-        if (text.startsWith(normalizedQuery)) {
+        if (core.matchesSearchText(getOptionText(option), rawQuery, searchMode)) {
           return index;
         }
       }
@@ -350,6 +346,19 @@
       }
     }
 
+    function setSearchMode(value) {
+      const nextMode = core.normalizeSearchMode(value);
+      if (searchMode === nextMode) {
+        return;
+      }
+      searchMode = nextMode;
+      if (activeSelect) {
+        cancelRefresh();
+        updatePendingSelection();
+        render();
+      }
+    }
+
     function reposition() {
       if (activeSelect && view.isVisible()) {
         view.reposition(activeSelect);
@@ -373,6 +382,7 @@
       suppressForMouseDown,
       handleKeydown,
       setCopyright,
+      setSearchMode,
       reposition,
       destroy
     });

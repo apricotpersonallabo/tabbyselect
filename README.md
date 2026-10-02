@@ -2,7 +2,7 @@
 
 ## Overview
 
-TabbySelect is a Manifest V3 browser extension for Chrome, Microsoft Edge, and Firefox. It adds keyboard-driven prefix search to native single-selection HTML `select` elements. The extension supports English, German, Spanish, Japanese, Korean, Simplified Chinese, and Traditional Chinese.
+TabbySelect is a Manifest V3 browser extension for Chrome, Microsoft Edge, and Firefox. It adds keyboard-driven prefix or contains search to native single-selection HTML `select` elements. The extension supports English, German, Spanish, Japanese, Korean, Simplified Chinese, and Traditional Chinese.
 
 ## Install
 
@@ -70,5 +70,7 @@ Configure the `browser-stores` GitHub Environment before submitting:
 If only one store fails, rerun the workflow for that store with the same version.
 
 ## User manual
+
+In the settings page, choose **Prefix match** (default) or **Contains match**. For example, `Ja` matches `Japan` in prefix mode, while `pan` matches it in contains mode. Both modes ignore case and trim leading and trailing whitespace. Changes are saved automatically and apply to open pages and their iframes.
 
 The user manual and interactive playground are available at [apricotpersonallabo.github.io/tabbyselect/manual.html](https://apricotpersonallabo.github.io/tabbyselect/manual.html). The source is maintained in `docs/manual.html`.

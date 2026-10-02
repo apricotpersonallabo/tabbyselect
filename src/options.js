@@ -8,6 +8,7 @@
   const manifest = chrome.runtime.getManifest();
 
   const urlAllowPatternsInput = document.getElementById("urlAllowPatterns");
+  const searchModeInputs = Array.from(document.querySelectorAll('input[name="searchMode"]'));
   const metaContactEmail = document.getElementById("metaContactEmail");
   const metaCopyright = document.getElementById("metaCopyright");
   const metaName = document.getElementById("metaName");
@@ -51,15 +52,19 @@
 
         const settings = core.normalizeSettings(items);
         urlAllowPatternsInput.value = settings.urlAllowPatterns;
+        for (const input of searchModeInputs) {
+          input.checked = input.value === settings.searchMode;
+          input.disabled = false;
+        }
         setStatus(i18n.t("settingsLoaded"));
       }
     );
   }
 
-  function saveSetting() {
+  function saveSetting(key, value) {
     chrome.storage.local.set(
       {
-        [STORAGE_KEYS.urlAllowPatterns]: urlAllowPatternsInput.value
+        [key]: value
       },
       () => {
         if (chrome.runtime.lastError) {
@@ -72,7 +77,18 @@
     );
   }
 
-  urlAllowPatternsInput.addEventListener("change", saveSetting);
+  urlAllowPatternsInput.addEventListener("change", () => {
+    saveSetting(STORAGE_KEYS.urlAllowPatterns, urlAllowPatternsInput.value);
+  });
+  for (const input of searchModeInputs) {
+    input.addEventListener("change", () => {
+      if (input.checked) {
+        saveSetting(STORAGE_KEYS.searchMode, input.value);
+      }
+    });
+  }
+
+  loadSetting();
 
   core
     .loadMetadata(
@@ -82,6 +98,5 @@
     )
     .then((metadata) => {
       renderManifestMeta(metadata);
-      loadSetting();
     });
 })();
