@@ -65,7 +65,6 @@
   const activationController = modules.createActivationController({
     core,
     chromeApi: chrome,
-    getCurrentUrl: () => window.location.href,
     onStateChange({ active, settings, url }) {
       debugLogEnabled = settings.debugLogEnabled;
       if (active) {

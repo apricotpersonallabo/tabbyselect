@@ -114,7 +114,7 @@
             <h2 data-i18n="limitationsTitle">対象と制限</h2>
             <ul class="limitation-list">
               <li data-i18n="limitationNative">対象はネイティブHTMLの単一選択selectです。独自UIのドロップダウンとselect[multiple]は対象外です。</li>
-              <li data-i18n="limitationDom">トップフレームの通常DOM内にあるselectが対象です。iframeとページ側Shadow DOM内は対象外です。</li>
+              <li data-i18n="limitationDom">トップページとiframe内の通常DOMにあるselectが対象です。別ドメイン、入れ子、動的追加、about:blank・srcdocのiframeにも対応し、有効URLはトップページのURLで判定します。ページ側Shadow DOM内は対象外です。</li>
               <li data-i18n="limitationProtocol">有効化できるのはhttp://またはhttps://のページです。ブラウザ設定ページなどでは動作しません。</li>
               <li data-i18n="limitationMouse">マウスでselectをクリックした場合、そのフォーカスが続く間はブラウザ標準の操作を優先します。</li>
             </ul>

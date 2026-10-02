@@ -6,6 +6,24 @@ if (typeof importScripts === "function") {
   const core = globalThis.TabbySelectCore;
   const i18n = globalThis.TabbySelectI18n;
   const { STORAGE_KEYS, DEFAULT_SETTINGS, URL_CHANGED_MESSAGE_TYPE } = core;
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!message || message.type !== core.GET_TOP_URL_MESSAGE_TYPE) {
+      return;
+    }
+    if (!sender.tab || typeof sender.tab.id !== "number") {
+      sendResponse({ url: null });
+      return;
+    }
+
+    chrome.tabs.get(sender.tab.id, (tab) => {
+      const url = !chrome.runtime.lastError && tab && typeof tab.url === "string"
+        ? tab.url
+        : null;
+      sendResponse({ url });
+    });
+    return true;
+  });
   const ACTION_ICON_ON = {
     16: "icons/on-16.png",
     32: "icons/on-32.png",

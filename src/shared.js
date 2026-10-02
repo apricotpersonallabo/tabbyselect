@@ -24,6 +24,7 @@
     copyright: "Not configured"
   });
   const URL_CHANGED_MESSAGE_TYPE = "tabby-select:url-changed";
+  const GET_TOP_URL_MESSAGE_TYPE = "tabby-select:get-top-url";
 
   function normalizeSettings(value) {
     const input = value && typeof value === "object" ? value : {};
@@ -130,6 +131,7 @@
     DEFAULT_SETTINGS,
     DEFAULT_METADATA,
     URL_CHANGED_MESSAGE_TYPE,
+    GET_TOP_URL_MESSAGE_TYPE,
     normalizeSettings,
     normalizeMetadata,
     loadMetadata,

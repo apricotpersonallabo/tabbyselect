@@ -17,7 +17,42 @@ let worker;
 let extensionId;
 let server;
 let port;
+let frameServer;
+let framePort;
 let userDataDir;
+
+function frameMarkup() {
+  return `<button id="frameBefore">Before</button>
+    <select id="frameSelect"><option>Initial</option><option>Alpha</option><option>Target</option></select>
+    <button id="frameAfter">After</button>`;
+}
+
+function framesPageMarkup() {
+  const srcdoc = frameMarkup().replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  return `<!doctype html><html><body>
+    <button id="parentBefore">Parent before</button>
+    <iframe name="same" src="/frames/select"></iframe>
+    <iframe name="cross" src="http://127.0.0.1:${framePort}/frames/select"></iframe>
+    <iframe name="nestedParent" src="/frames/nested"></iframe>
+    <iframe name="blank"></iframe>
+    <iframe name="srcdoc" srcdoc="${srcdoc}"></iframe>
+    <button id="parentAfter">Parent after</button>
+    <script>document.querySelector('[name="blank"]').contentDocument.body.innerHTML =
+      ${JSON.stringify(frameMarkup())};</script>
+  </body></html>`;
+}
+
+async function openFrameSuggestion(frame) {
+  await frame.locator("#frameBefore").click();
+  await expect.poll(async () => {
+    await frame.locator("#frameBefore").focus();
+    await frame.locator("#frameSelect").focus();
+    return frame.evaluate(() => {
+      const host = document.querySelector("[data-tabby-select-host]");
+      return Boolean(host && !host.shadowRoot.querySelector(".root").hidden);
+    });
+  }).toBe(true);
+}
 
 function pageMarkup() {
   const options = Array.from(
@@ -91,7 +126,7 @@ async function waitForSuggestion(page) {
 }
 
 test.beforeAll(async () => {
-  server = http.createServer((request, response) => {
+  const handleRequest = (request, response) => {
     const supportFiles = {
       "/support/index.html": ["index.html", "text/html; charset=utf-8"],
       "/support/manual.html": ["manual.html", "text/html; charset=utf-8"],
@@ -101,6 +136,17 @@ test.beforeAll(async () => {
       "/support/assets/icon-128.png": ["assets/icon-128.png", "image/png"]
     };
     const pathname = new URL(request.url, "http://127.0.0.1").pathname;
+    if (pathname.endsWith("/frames")) {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(framesPageMarkup());
+      return;
+    }
+    if (pathname.startsWith("/frames/")) {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(`<!doctype html><html><body>${frameMarkup()}${pathname === "/frames/nested"
+        ? '<iframe name="nested" src="/frames/select"></iframe>' : ""}</body></html>`);
+      return;
+    }
     const supportFile = supportFiles[pathname];
     if (supportFile) {
       response.writeHead(200, { "content-type": supportFile[1] });
@@ -110,7 +156,11 @@ test.beforeAll(async () => {
 
     response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     response.end(pageMarkup());
-  });
+  };
+  frameServer = http.createServer(handleRequest);
+  await new Promise((resolve) => frameServer.listen(0, "127.0.0.1", resolve));
+  framePort = frameServer.address().port;
+  server = http.createServer(handleRequest);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   port = server.address().port;
   userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tabby-select-e2e-"));
@@ -145,9 +195,126 @@ test.afterAll(async () => {
   if (server) {
     await new Promise((resolve) => server.close(resolve));
   }
+  if (frameServer) {
+    await new Promise((resolve) => frameServer.close(resolve));
+  }
   if (userDataDir) {
     fs.rmSync(userDataDir, { recursive: true, force: true });
   }
+});
+
+test("supports keyboard selection in all frame types using the top URL", async () => {
+  await setSettings({
+    urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
+    manualEnabledOverride: true
+  });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
+  await page.evaluate(() => {
+    const frame = document.createElement("iframe");
+    frame.name = "dynamic";
+    frame.src = "/frames/select";
+    document.body.appendChild(frame);
+  });
+  await expect.poll(() => page.frames().some((frame) => frame.name() === "dynamic")).toBe(true);
+
+  for (const name of ["same", "cross", "nested", "blank", "srcdoc", "dynamic"]) {
+    const frame = page.frame({ name });
+    await expect(frame.locator("#frameSelect")).toBeVisible();
+    await frame.evaluate(() => {
+      window.frameEvents = { input: 0, change: 0 };
+      const select = document.getElementById("frameSelect");
+      for (const type of ["input", "change"]) {
+        select.addEventListener(type, () => window.frameEvents[type]++);
+      }
+    });
+    await openFrameSuggestion(frame);
+    await page.keyboard.type("Tar");
+    await expect(frame.locator("[data-tabby-select-host] .item")).toHaveCount(1);
+    await expect(frame.locator("[data-tabby-select-host] .pending")).toHaveText("Target");
+    const bounds = await frame.locator("[data-tabby-select-host] .root").evaluate((root) => {
+      const rect = root.getBoundingClientRect();
+      return { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom,
+        width: window.innerWidth, height: window.innerHeight };
+    });
+    expect(bounds.top).toBeGreaterThanOrEqual(0);
+    expect(bounds.left).toBeGreaterThanOrEqual(0);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.width);
+    expect(bounds.bottom).toBeLessThanOrEqual(bounds.height);
+    await page.keyboard.press("Enter");
+    await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 2);
+    await expect(frame.locator("#frameAfter")).toBeFocused();
+    expect(await frame.evaluate(() => window.frameEvents)).toEqual({ input: 1, change: 1 });
+    await frame.locator("#frameSelect").focus();
+    await page.keyboard.type("Al");
+    await page.keyboard.press("Tab");
+    await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 1);
+    await expect(frame.locator("#frameAfter")).toBeFocused();
+    expect(await frame.evaluate(() => window.frameEvents)).toEqual({ input: 2, change: 2 });
+  }
+
+  // With no next element in the frame, native Tab continues into the parent.
+  const dynamic = page.frame({ name: "dynamic" });
+  await dynamic.locator("#frameAfter").evaluate((element) => element.remove());
+  await page.evaluate(() => {
+    const after = document.createElement("button");
+    after.id = "afterDynamic";
+    after.textContent = "After dynamic frame";
+    document.body.appendChild(after);
+  });
+  await dynamic.locator("#frameSelect").focus();
+  await page.keyboard.type("Tar");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#afterDynamic")).toBeFocused();
+  await page.close();
+});
+
+test("keeps frames synchronized through SPA navigation, settings, and reload", async () => {
+  await setSettings({
+    urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
+    manualEnabledOverride: true
+  });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
+  const names = ["same", "cross", "nested", "blank", "srcdoc"];
+  for (const name of names) {
+    await openFrameSuggestion(page.frame({ name }));
+  }
+  await page.evaluate(() => history.pushState({}, "", "/blocked/frames"));
+  for (const name of names) {
+    await expect(page.frame({ name }).locator("[data-tabby-select-host]")).toHaveCount(0);
+  }
+
+  // Even a child URL matching the allow list remains disabled under a blocked parent.
+  await page.locator('iframe[name="same"]').evaluate((frame) => { frame.src = "/allowed/child"; });
+  await expect.poll(() => page.frame({ name: "same" }).url()).toContain("/allowed/child");
+  const same = page.frame({ name: "same" });
+  await same.locator("#before").click();
+  await same.locator("#many").focus();
+  await page.keyboard.type("Option");
+  // Allow asynchronous initialization to settle before checking a disabled frame.
+  await page.waitForTimeout(100);
+  await expect(same.locator("[data-tabby-select-host]")).toHaveCount(0);
+
+  await page.evaluate(() => history.pushState({}, "", "/allowed/frames"));
+  await page.locator('iframe[name="same"]').evaluate((frame) => { frame.src = "/frames/select"; });
+  await expect.poll(() => page.frame({ name: "same" }).url()).toContain("/frames/select");
+  for (const name of names) {
+    await openFrameSuggestion(page.frame({ name }));
+  }
+  await setSettings({ manualEnabledOverride: false });
+  for (const name of names) {
+    await expect(page.frame({ name }).locator("[data-tabby-select-host]")).toHaveCount(0);
+  }
+  await setSettings({ manualEnabledOverride: true });
+  for (const name of names) {
+    await openFrameSuggestion(page.frame({ name }));
+  }
+  await setSettings({ urlAllowPatterns: "https://unrelated.example/*" });
+  for (const name of names) {
+    await expect(page.frame({ name }).locator("[data-tabby-select-host]")).toHaveCount(0);
+  }
+  await page.close();
 });
 
 test("loads all extension contexts and controls the feature lifecycle", async () => {

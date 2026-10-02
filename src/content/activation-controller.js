@@ -7,13 +7,15 @@
   namespace.createActivationController = function createActivationController({
     core,
     chromeApi,
-    getCurrentUrl,
     onStateChange
   }) {
     let started = false;
     let settingsLoaded = false;
     let settings = core.normalizeSettings(core.DEFAULT_SETTINGS);
-    let currentUrl = getCurrentUrl();
+    let currentUrl = null;
+    let lifecycle = 0;
+    let urlRevision = 0;
+    let pendingSettings = {};
 
     function emit() {
       onStateChange({
@@ -24,7 +26,7 @@
     }
 
     function handleStorageChanged(changes, areaName) {
-      if (areaName !== "local") {
+      if (!started || areaName !== "local") {
         return;
       }
 
@@ -37,18 +39,21 @@
       for (const key of relevantKeys) {
         if (changes[key]) {
           next[key] = changes[key].newValue;
+          if (!settingsLoaded) {
+            pendingSettings[key] = changes[key].newValue;
+          }
         }
       }
       settings = core.normalizeSettings(next);
-      settingsLoaded = true;
       emit();
     }
 
     function handleRuntimeMessage(message) {
-      if (!message || message.type !== core.URL_CHANGED_MESSAGE_TYPE) {
+      if (!started || !message || message.type !== core.URL_CHANGED_MESSAGE_TYPE) {
         return;
       }
-      currentUrl = typeof message.url === "string" ? message.url : getCurrentUrl();
+      urlRevision += 1;
+      currentUrl = typeof message.url === "string" ? message.url : null;
       emit();
     }
 
@@ -57,16 +62,36 @@
         return;
       }
       started = true;
+      const currentLifecycle = ++lifecycle;
+      const initialUrlRevision = urlRevision;
+      settingsLoaded = false;
+      settings = core.normalizeSettings(core.DEFAULT_SETTINGS);
+      pendingSettings = {};
+      currentUrl = null;
       chromeApi.storage.onChanged.addListener(handleStorageChanged);
       chromeApi.runtime.onMessage.addListener(handleRuntimeMessage);
       chromeApi.storage.local.get({ ...core.DEFAULT_SETTINGS }, (items) => {
-        if (!started || chromeApi.runtime.lastError) {
+        const failed = Boolean(chromeApi.runtime.lastError);
+        if (!started || lifecycle !== currentLifecycle) {
+          return;
+        }
+        if (failed) {
           emit();
           return;
         }
-        settings = core.normalizeSettings(items);
+        settings = core.normalizeSettings({ ...items, ...pendingSettings });
+        pendingSettings = {};
         settingsLoaded = true;
-        currentUrl = getCurrentUrl();
+        emit();
+      });
+      chromeApi.runtime.sendMessage({ type: core.GET_TOP_URL_MESSAGE_TYPE }, (response) => {
+        const failed = Boolean(chromeApi.runtime.lastError);
+        if (!started || lifecycle !== currentLifecycle || urlRevision !== initialUrlRevision) {
+          return;
+        }
+        currentUrl = !failed && response && typeof response.url === "string"
+          ? response.url
+          : null;
         emit();
       });
     }
@@ -76,9 +101,11 @@
         return;
       }
       started = false;
+      lifecycle += 1;
       chromeApi.storage.onChanged.removeListener(handleStorageChanged);
       chromeApi.runtime.onMessage.removeListener(handleRuntimeMessage);
       settingsLoaded = false;
+      currentUrl = null;
       emit();
     }
 

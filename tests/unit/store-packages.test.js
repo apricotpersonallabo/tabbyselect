@@ -58,6 +58,10 @@ test("builds strict Chromium and Firefox store packages", async (context) => {
 
   assert.equal(result.version, sourceManifest.version);
   assert.deepEqual(chromiumManifest, sourceManifest);
+  for (const manifest of [chromiumManifest, firefoxManifest]) {
+    assert.equal(manifest.content_scripts[0].all_frames, true);
+    assert.equal(manifest.content_scripts[0].match_about_blank, true);
+  }
   assert.deepEqual(firefoxManifest.background, {
     scripts: ["shared.js", "i18n.js", "background.js"]
   });
