@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "defaultLanguage": "ja",
+  "product": {
+    "name": "TabbySelect",
+    "tagline": "長いドロップダウンを、迷わず選ぶ。",
+    "description": "TabbySelectは、Webページのselect要素をキーボードで素早く検索・選択できるブラウザ拡張機能です。"
+  },
+  "repository": {
+    "url": "https://github.com/apricotpersonallabo/tabbyselect",
+    "issues": "https://github.com/apricotpersonallabo/tabbyselect/issues"
+  },
+  "theme": {
+    "primary": "#1269e8",
+    "accent": "#ffc928"
+  },
+  "languages": [
+    "ja",
+    "en"
+  ],
+  "stores": {
+    "chrome": "https://chromewebstore.google.com/detail/tabbyselect/bnieiiechiiakdfmamcfmpdbbobhpjbk",
+    "edge": "https://microsoftedge.microsoft.com/addons/detail/tabbyselect/papoandpejndkhgghecfnhcdjpcbecni",
+    "firefox": "https://addons.mozilla.org/ja/firefox/addon/tabbyselect/"
+  },
+  "pages": [
+    {
+      "slug": "index",
+      "title": "概要",
+      "source": "content/index.md"
+    },
+    {
+      "slug": "manual",
+      "title": "使い方",
+      "source": "content/manual.md"
+    },
+    {
+      "slug": "privacy",
+      "title": "プライバシー",
+      "source": "content/privacy.md"
+    }
+  ]
+}
