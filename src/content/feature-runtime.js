@@ -7,6 +7,7 @@
   namespace.createFeatureRuntime = function createFeatureRuntime({
     session,
     view,
+    pickerController,
     loadMetadata,
     debugLog
   }) {
@@ -21,12 +22,15 @@
       enabled = true;
       eventAbortController = new AbortController();
       const signal = eventAbortController.signal;
+      pickerController.start();
 
       document.addEventListener(
         "mousedown",
         (event) => {
-          if (event.target instanceof HTMLSelectElement) {
-            session.suppressForMouseDown(event.target);
+          // Listbox clicks target an option rather than the select itself.
+          const select = event.target instanceof Element ? event.target.closest("select") : null;
+          if (select instanceof HTMLSelectElement) {
+            session.suppressForMouseDown(select);
           }
         },
         { capture: true, signal }
@@ -34,18 +38,14 @@
       document.addEventListener(
         "focusin",
         (event) => {
-          if (event.target instanceof HTMLSelectElement && !event.target.multiple) {
-            session.activate(event.target);
-          }
+          session.handleFocusin(event);
         },
         { capture: true, signal }
       );
       document.addEventListener(
         "focusout",
         (event) => {
-          if (event.target instanceof HTMLSelectElement) {
-            session.close(event.target);
-          }
+          session.handleFocusout(event);
         },
         { capture: true, signal }
       );
@@ -81,6 +81,7 @@
     }
 
     function disable() {
+      pickerController.stop();
       if (!enabled) {
         view.destroy();
         return;

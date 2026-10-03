@@ -13,13 +13,15 @@
     debugLogEnabled: "debugLogEnabled",
     urlAllowPatterns: "urlAllowPatterns",
     manualEnabledOverride: "manualEnabledOverride",
-    searchMode: "searchMode"
+    searchMode: "searchMode",
+    switchFromPickerOnKeydown: "switchFromPickerOnKeydown"
   });
   const DEFAULT_SETTINGS = Object.freeze({
     debugLogEnabled: false,
     urlAllowPatterns: "",
     manualEnabledOverride: true,
-    searchMode: "prefix"
+    searchMode: "prefix",
+    switchFromPickerOnKeydown: false
   });
   const DEFAULT_METADATA = Object.freeze({
     contactEmail: "Not configured",
@@ -30,6 +32,12 @@
 
   function normalizeSearchMode(value) {
     return value === "contains" ? "contains" : "prefix";
+  }
+
+  function supportsBaseSelect(cssApi = globalThis.CSS) {
+    return Boolean(cssApi && typeof cssApi.supports === "function" &&
+      cssApi.supports("appearance", "base-select") &&
+      cssApi.supports("selector(select::picker(select))"));
   }
 
   function matchesSearchText(text, query, mode = DEFAULT_SETTINGS.searchMode) {
@@ -52,7 +60,8 @@
         typeof input[STORAGE_KEYS.manualEnabledOverride] === "undefined"
           ? DEFAULT_SETTINGS.manualEnabledOverride
           : Boolean(input[STORAGE_KEYS.manualEnabledOverride]),
-      searchMode: normalizeSearchMode(input[STORAGE_KEYS.searchMode])
+      searchMode: normalizeSearchMode(input[STORAGE_KEYS.searchMode]),
+      switchFromPickerOnKeydown: input[STORAGE_KEYS.switchFromPickerOnKeydown] === true
     };
   }
 
@@ -148,6 +157,7 @@
     URL_CHANGED_MESSAGE_TYPE,
     GET_TOP_URL_MESSAGE_TYPE,
     normalizeSearchMode,
+    supportsBaseSelect,
     matchesSearchText,
     normalizeSettings,
     normalizeMetadata,

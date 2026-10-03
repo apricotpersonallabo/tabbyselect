@@ -25,6 +25,8 @@
   "toggleSaved": { "message": "已儲存切換鈕設定。" },
   "optionsOpenError": { "message": "無法開啟設定頁面。" },
   "optionsDocumentTitle": { "message": "TabbySelect 設定" },
+  "optionsAboutExtension": { "message": "關於此擴充功能" },
+  "supportSite": { "message": "支援網站" },
   "settingsSectionTitle": { "message": "設定" },
   "urlSettingsTitle": { "message": "啟用 URL 設定" },
   "urlDescription": { "message": "只在符合下列模式的頁面上啟用擴充功能。每行輸入一個模式；* 可比對任意文字。留空即可在所有 URL 上啟用擴充功能。" },
@@ -49,6 +51,11 @@
   "settingsLoaded": { "message": "已載入目前設定。" },
   "settingsSaveError": { "message": "無法儲存設定。" },
   "settingsSaved": { "message": "已儲存設定。" },
+  "suggestionSettingsTitle": { "message": "候選清單顯示" },
+  "switchFromPickerOnKeydown": { "message": "在已開啟的選取清單中按鍵時切換至候選清單" },
+  "pickerTriggerDescription": { "message": "預設關閉。在支援的瀏覽器中，選取框及其清單使用可自訂的呈現方式，因此外觀會改變。在清單開啟時按鍵會關閉清單並開啟搜尋欄。保留首個輸入字元，選取值僅在確認時改變。方向鍵、Esc、Tab、單獨按下修飾鍵和快捷鍵維持正常操作。變更套用至已開啟的頁面和 iframe，關閉此設定可恢復原來的外觀。" },
+  "pickerUnavailable": { "message": "此瀏覽器不支援此設定。使用原來的選取清單。" },
+  "searchQueryLabel": { "message": "搜尋選項" },
   "noSuggestions": { "message": "沒有符合的選項" },
   "emptyOptionLabel": { "message": "（空白）" }
 }

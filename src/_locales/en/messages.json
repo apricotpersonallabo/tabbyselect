@@ -25,6 +25,8 @@
   "toggleSaved": { "message": "Toggle setting saved." },
   "optionsOpenError": { "message": "Could not open the settings page." },
   "optionsDocumentTitle": { "message": "TabbySelect Settings" },
+  "optionsAboutExtension": { "message": "About the extension" },
+  "supportSite": { "message": "Support site" },
   "settingsSectionTitle": { "message": "Settings" },
   "urlSettingsTitle": { "message": "Enabled URL settings" },
   "urlDescription": { "message": "Enable the extension only on pages matching the patterns below. Enter one pattern per line; * matches any text. Leave this empty to enable the extension on all URLs." },
@@ -49,6 +51,11 @@
   "settingsLoaded": { "message": "Current settings loaded." },
   "settingsSaveError": { "message": "Failed to save settings." },
   "settingsSaved": { "message": "Settings saved." },
+  "suggestionSettingsTitle": { "message": "Suggestion display" },
+  "switchFromPickerOnKeydown": { "message": "Switch an open select list to suggestions on a key press" },
+  "pickerTriggerDescription": { "message": "Off by default. On supported browsers, enabling this changes the appearance of selects and their lists. A key press while the list is open closes it and opens the search field. The first character is preserved; the value changes only when confirmed. Arrow keys, Escape, Tab, modifier keys alone, and shortcuts keep their normal behavior. Changes apply to open pages and iframes. Turning this off restores the original appearance." },
+  "pickerUnavailable": { "message": "This browser does not support this setting. The original select list is used." },
+  "searchQueryLabel": { "message": "Search options" },
   "noSuggestions": { "message": "No matching options" },
   "emptyOptionLabel": { "message": "(Empty)" }
 }

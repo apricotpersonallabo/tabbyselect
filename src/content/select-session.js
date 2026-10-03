@@ -9,7 +9,7 @@
   namespace.createSelectSession = function createSelectSession({
     view,
     focusNavigator,
-    isPageJustLoaded,
+    pickerController,
     createTraceId,
     debugLog,
     debugLogWithTrace,
@@ -21,12 +21,48 @@
     let query = "";
     let pendingIndex = -1;
     let suppressUiForCurrentFocus = false;
-    let mouseSuppressedSelect = null;
     let refreshRafId = null;
     let optionObserver = null;
     let removalObserver = null;
     let copyright = initialCopyright;
     let searchMode = core.DEFAULT_SETTINGS.searchMode;
+    let composing = false;
+    let returningFocus = false;
+    const navigationKeys = new Set([
+      "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape",
+      "Up", "Down", "Left", "Right", "Esc"
+    ]);
+
+    function isNavigationKey(event) {
+      return navigationKeys.has(event.key) || navigationKeys.has(event.code) ||
+        [27, 37, 38, 39, 40].includes(event.keyCode);
+    }
+
+    function getSelectTarget(target) {
+      if (target instanceof HTMLSelectElement) {
+        return target;
+      }
+      const select = target instanceof Element ? target.closest("select") : null;
+      return select && pickerController.isManaged(select) ? select : null;
+    }
+
+    function hasSessionFocus() {
+      return document.activeElement === activeSelect || view.hasQueryFocus() ||
+        (activeSelect && pickerController.isManaged(activeSelect) &&
+          activeSelect.contains(document.activeElement));
+    }
+
+    function restoreSelectFocus(select) {
+      if (!view.hasQueryFocus() || !select.isConnected || !document.hasFocus()) {
+        return;
+      }
+      returningFocus = true;
+      try {
+        select.focus({ preventScroll: true });
+      } finally {
+        returningFocus = false;
+      }
+    }
 
     function getOptionText(option) {
       return (option.textContent || option.label || "").trim();
@@ -106,6 +142,7 @@
         query,
         suggestions: getSuggestions(activeSelect, query),
         pendingIndex,
+        composing,
         copyright,
         emptyMessage: noSuggestionsMessage
       });
@@ -121,7 +158,7 @@
         refreshRafId = null;
         if (
           activeSelect instanceof HTMLSelectElement &&
-          document.activeElement === activeSelect &&
+          hasSessionFocus() &&
           !suppressUiForCurrentFocus
         ) {
           updatePendingSelection();
@@ -130,22 +167,23 @@
       });
     }
 
-    function close(select = activeSelect) {
+    function close(select = activeSelect, { restoreFocus = false } = {}) {
       if (!(activeSelect instanceof HTMLSelectElement) || select !== activeSelect) {
         return;
       }
 
       const closingSelect = activeSelect;
+      if (restoreFocus) {
+        restoreSelectFocus(closingSelect);
+      }
       cancelRefresh();
       disconnectObservers();
       view.hide();
       activeSelect = null;
       query = "";
       pendingIndex = -1;
+      composing = false;
       suppressUiForCurrentFocus = false;
-      if (mouseSuppressedSelect === closingSelect) {
-        mouseSuppressedSelect = null;
-      }
     }
 
     function startObservers(select) {
@@ -153,7 +191,7 @@
         if (
           mutations.length &&
           activeSelect === select &&
-          document.activeElement === select &&
+          hasSessionFocus() &&
           !suppressUiForCurrentFocus
         ) {
           debugLog("active select options mutated", { mutationCount: mutations.length });
@@ -177,7 +215,7 @@
     }
 
     function activate(select, { fromKeydown = false } = {}) {
-      if (!(select instanceof HTMLSelectElement) || select.multiple) {
+      if (!(select instanceof HTMLSelectElement) || select.disabled || select.multiple || select.options.length <= 1) {
         return;
       }
 
@@ -188,23 +226,77 @@
         activeSelect = select;
         query = "";
         pendingIndex = -1;
-        suppressUiForCurrentFocus =
-          mouseSuppressedSelect === select || (!fromKeydown && isPageJustLoaded());
-        if (mouseSuppressedSelect === select) {
-          mouseSuppressedSelect = null;
-        }
+        composing = false;
+        suppressUiForCurrentFocus = !fromKeydown;
         startObservers(select);
       }
 
+      if (fromKeydown) {
+        suppressUiForCurrentFocus = false;
+      }
+
       render();
+      if (!suppressUiForCurrentFocus) {
+        view.focusQuery();
+      }
       scheduleRefresh();
+    }
+
+    function handleFocusin(event) {
+      if (!returningFocus && event.target instanceof HTMLSelectElement) {
+        // Returning from the query to its select starts a new waiting session.
+        // Otherwise activate() would reuse the open search and steal focus back.
+        if (activeSelect === event.target) {
+          close();
+        }
+        activate(event.target);
+      }
+    }
+
+    function handleFocusout(event) {
+      if (returningFocus || !activeSelect ||
+          (getSelectTarget(event.target) !== activeSelect && !view.isQueryEvent(event))) {
+        return;
+      }
+      if (getSelectTarget(event.relatedTarget) === activeSelect || view.containsFocusTarget(event.relatedTarget)) {
+        return;
+      }
+      close();
+    }
+
+    function handleInput(event) {
+      if (!activeSelect || composing || event.isComposing) {
+        return;
+      }
+      const value = event.target.value;
+      if (query === value) {
+        return;
+      }
+      query = value;
+      cancelRefresh();
+      updatePendingSelection();
+      render();
+    }
+
+    function handleCompositionStart() {
+      if (activeSelect) {
+        composing = true;
+        cancelRefresh();
+      }
+    }
+
+    function handleCompositionEnd(event) {
+      if (!activeSelect) {
+        return;
+      }
+      composing = false;
+      handleInput(event);
     }
 
     function suppressForMouseDown(select) {
       if (!(select instanceof HTMLSelectElement)) {
         return;
       }
-      mouseSuppressedSelect = select;
       if (activeSelect === select) {
         suppressUiForCurrentFocus = true;
         view.hide();
@@ -231,34 +323,58 @@
     }
 
     function handleKeydown(event) {
-      const select = event.target;
+      const fromQuery = view.isQueryEvent(event);
+      const select = fromQuery ? activeSelect : getSelectTarget(event.target);
       if (
         !(select instanceof HTMLSelectElement) ||
         select.disabled ||
         select.multiple ||
-        select.options.length <= 1 ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey
+        select.options.length <= 1
       ) {
         return;
       }
 
-      if (activeSelect !== select) {
-        activate(select, { fromKeydown: true });
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
       }
-      scheduleRefresh();
 
-      const isCharacter = event.key.length === 1;
-      const isBackspace = event.key === "Backspace";
+      if (!fromQuery) {
+        const fromPicker = pickerController.isManaged(select) && select.matches(":open");
+        if (isNavigationKey(event) || event.key === "Tab" ||
+            ["Shift", "Control", "Alt", "Meta", "AltGraph"].includes(event.key)) {
+          return;
+        }
+        const imeKey = event.isComposing || event.keyCode === 229;
+        if (fromPicker) {
+          returningFocus = true;
+          try {
+            pickerController.closePicker(select);
+          } finally {
+            returningFocus = false;
+          }
+          query = "";
+          pendingIndex = -1;
+          composing = false;
+        }
+        activate(select, { fromKeydown: true });
+        // Opening the UI is separate from moving or confirming a candidate.
+        // Printable keys and IME keys continue into the newly focused text input.
+        if (!imeKey && ["Enter", "Home", "End", "PageUp", "PageDown", "Backspace", "Delete"].includes(event.key)) {
+          event.preventDefault();
+        }
+        return;
+      }
+
+      if (composing || event.isComposing || event.keyCode === 229) {
+        return;
+      }
+
       const isEnter = event.key === "Enter";
       const isTab = event.key === "Tab";
       const isEscape = event.key === "Escape";
       const isArrowUp = event.key === "ArrowUp";
       const isArrowDown = event.key === "ArrowDown";
       if (
-        !isCharacter &&
-        !isBackspace &&
         !isEnter &&
         !isTab &&
         !isEscape &&
@@ -302,6 +418,7 @@
           selectedIndex: select.selectedIndex
         });
         if (committed) {
+          close(select, { restoreFocus: true });
           focusNavigator.moveAfterEnter(select, snapshot, traceId);
         } else {
           render();
@@ -312,8 +429,7 @@
 
       if (isTab) {
         commitPendingSelection(select);
-        query = "";
-        pendingIndex = -1;
+        close(select, { restoreFocus: true });
         return;
       }
 
@@ -323,20 +439,12 @@
           pendingIndex = -1;
           render();
         } else {
-          close(select);
+          close(select, { restoreFocus: true });
         }
         event.preventDefault();
         return;
       }
 
-      if (isBackspace) {
-        query = query.slice(0, -1);
-      } else {
-        query += event.key;
-      }
-      updatePendingSelection();
-      render();
-      event.preventDefault();
     }
 
     function setCopyright(value) {
@@ -367,20 +475,27 @@
 
     function destroy() {
       if (activeSelect) {
-        close(activeSelect);
+        close(activeSelect, { restoreFocus: true });
       } else {
         cancelRefresh();
         disconnectObservers();
         view.hide();
       }
-      mouseSuppressedSelect = null;
     }
+
+    view.setInputHandlers({
+      onInput: handleInput,
+      onCompositionStart: handleCompositionStart,
+      onCompositionEnd: handleCompositionEnd
+    });
 
     return Object.freeze({
       activate,
       close,
       suppressForMouseDown,
       handleKeydown,
+      handleFocusin,
+      handleFocusout,
       setCopyright,
       setSearchMode,
       reposition,

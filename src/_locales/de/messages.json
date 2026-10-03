@@ -25,6 +25,8 @@
   "toggleSaved": { "message": "Schaltereinstellung gespeichert." },
   "optionsOpenError": { "message": "Die Einstellungsseite konnte nicht geöffnet werden." },
   "optionsDocumentTitle": { "message": "TabbySelect – Einstellungen" },
+  "optionsAboutExtension": { "message": "Über die Erweiterung" },
+  "supportSite": { "message": "Support-Website" },
   "settingsSectionTitle": { "message": "Einstellungen" },
   "urlSettingsTitle": { "message": "Aktivierte URL-Einstellungen" },
   "urlDescription": { "message": "Aktiviert die Erweiterung nur auf Seiten, die den folgenden Mustern entsprechen. Ein Muster pro Zeile; * steht für beliebigen Text. Bei leerem Feld wird die Erweiterung für alle URLs aktiviert." },
@@ -49,6 +51,11 @@
   "settingsLoaded": { "message": "Aktuelle Einstellungen geladen." },
   "settingsSaveError": { "message": "Die Einstellungen konnten nicht gespeichert werden." },
   "settingsSaved": { "message": "Einstellungen gespeichert." },
+  "suggestionSettingsTitle": { "message": "Vorschläge anzeigen" },
+  "switchFromPickerOnKeydown": { "message": "Eine offene Auswahlliste bei Tastendruck durch Vorschläge ersetzen" },
+  "pickerTriggerDescription": { "message": "Standardmäßig aus. In unterstützten Browsern erhalten das Auswahlfeld und seine Liste eine anpassbare Darstellung; ihr Aussehen ändert sich. Ein Tastendruck in der offenen Liste schließt sie und öffnet das Suchfeld. Das erste Zeichen bleibt erhalten; der Wert ändert sich erst bei Bestätigung. Pfeiltasten, Escape, Tab, einzelne Modifikatortasten und Tastenkombinationen behalten ihr normales Verhalten. Änderungen gelten für offene Seiten und Iframes. Ausschalten stellt das ursprüngliche Aussehen wieder her." },
+  "pickerUnavailable": { "message": "Dieser Browser unterstützt diese Einstellung nicht. Die ursprüngliche Auswahlliste wird verwendet." },
+  "searchQueryLabel": { "message": "Optionen durchsuchen" },
   "noSuggestions": { "message": "Keine passenden Optionen" },
   "emptyOptionLabel": { "message": "(Leer)" }
 }

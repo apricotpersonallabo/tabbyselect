@@ -47,6 +47,7 @@ async function openFrameSuggestion(frame) {
   await expect.poll(async () => {
     await frame.locator("#frameBefore").focus();
     await frame.locator("#frameSelect").focus();
+    await frame.locator("#frameSelect").press("Home");
     return frame.evaluate(() => {
       const host = document.querySelector("[data-tabby-select-host]");
       return Boolean(host && !host.shadowRoot.querySelector(".root").hidden);
@@ -132,11 +133,40 @@ function searchPageMarkup() {
   </body></html>`;
 }
 
+function unicodePageMarkup() {
+  return `<!doctype html><html><body>
+    <button id="unicodeBefore">Before</button>
+    <select id="unicodeSelect">
+      <option>Initial</option><option>日本</option><option>日本語</option><option>東京日本</option>
+      <option>にほん</option><option>ニホン</option><option>ＡＢＣ</option><option>ABC</option>
+      <option>１２３</option><option>😀日本</option><option disabled>日本 disabled</option>
+      <optgroup disabled label="Disabled"><option>日本 grouped</option></optgroup>
+    </select>
+    <button id="unicodeAfter">After</button>
+    <script>
+      window.unicodeEvents = { input: 0, change: 0 };
+      for (const type of ['input', 'change']) {
+        document.getElementById('unicodeSelect').addEventListener(type, () => window.unicodeEvents[type]++);
+      }
+    </script>
+  </body></html>`;
+}
+
+async function openUnicodeSearch(page, mode = "prefix") {
+  await setSettings({ searchMode: mode, urlAllowPatterns: "", manualEnabledOverride: true });
+  await page.goto(`http://127.0.0.1:${port}/allowed/ime`);
+  await page.locator("#unicodeBefore").click();
+  await page.locator("#unicodeSelect").focus();
+  await page.keyboard.press("Home");
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+}
+
 async function setSettings(settings) {
   await worker.evaluate((value) => chrome.storage.local.set(value), settings);
 }
 
-async function waitForSuggestion(page) {
+async function openFocusedSelectSearch(page) {
+  await page.keyboard.press("Home");
   await page.waitForFunction(() => {
     const host = document.querySelector("[data-tabby-select-host]");
     const root = host && host.shadowRoot.querySelector(".root");
@@ -155,6 +185,19 @@ test.beforeAll(async () => {
       "/support/assets/icon-128.png": ["assets/icon-128.png", "image/png"]
     };
     const pathname = new URL(request.url, "http://127.0.0.1").pathname;
+    if (pathname === "/allowed/picker-csp") {
+      response.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "content-security-policy": "default-src 'self'; script-src 'none'; style-src 'self'"
+      });
+      response.end(searchPageMarkup());
+      return;
+    }
+    if (pathname === "/allowed/ime") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(unicodePageMarkup());
+      return;
+    }
     if (pathname === "/allowed/search") {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       response.end(searchPageMarkup());
@@ -361,7 +404,7 @@ test("loads all extension contexts and controls the feature lifecycle", async ()
   await page.locator("#before").focus();
   await page.waitForTimeout(100);
   await page.locator("#many").focus();
-  await waitForSuggestion(page);
+  await openFocusedSelectSearch(page);
 
   const initialUi = await page.evaluate(() => {
     const host = document.querySelector("[data-tabby-select-host]");
@@ -396,7 +439,7 @@ test("loads all extension contexts and controls the feature lifecycle", async ()
   expect(initialUi.rect.top).toBeLessThan(initialUi.selectTop);
 
   await page.locator("#second").focus();
-  await waitForSuggestion(page);
+  await openFocusedSelectSearch(page);
   await expect(page.locator("[data-tabby-select-host]")).toHaveCount(1);
   await page.locator("#second").evaluate((select) => {
     select.appendChild(new Option("Second C"));
@@ -421,7 +464,7 @@ test("loads all extension contexts and controls the feature lifecycle", async ()
   await page.locator("#before").focus();
   await page.waitForTimeout(100);
   await page.locator("#many").focus();
-  await waitForSuggestion(page);
+  await openFocusedSelectSearch(page);
   await page.evaluate(() => history.pushState({}, "", "/blocked/end"));
   await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
   await page.close();
@@ -437,12 +480,18 @@ test("runs the installed extension in the support site playground", async () => 
 
   await page.getByRole("button", { name: "Start practice" }).focus();
   await page.keyboard.press("Tab");
-  await waitForSuggestion(page);
+  await openFocusedSelectSearch(page);
   await page.keyboard.type("Jap");
   await page.keyboard.press("Enter");
 
   await expect(page.locator("#country")).toHaveValue("Japan");
   await expect(page.locator("#department")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await openFocusedSelectSearch(page);
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .item")).toContainText([
+    "Choose an option", "Accounting", "Design", "Engineering", "Marketing", "Sales", "Support"
+  ]);
   await expect(page.locator("[data-selection-status]")).toContainText(
     "Country or region: Japan"
   );
@@ -472,7 +521,7 @@ test("preserves keyboard selection and light-DOM focus behavior", async () => {
   await page.goto(`http://127.0.0.1:${port}/allowed/keyboard`);
   await page.locator("#before").click();
   await page.locator("#many").focus();
-  await waitForSuggestion(page);
+  await openFocusedSelectSearch(page);
 
   await page.keyboard.type("zzz");
   expect(
@@ -503,6 +552,10 @@ test("preserves keyboard selection and light-DOM focus behavior", async () => {
 
   await page.keyboard.press("Enter");
   await expect(page.locator("#second")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await openFocusedSelectSearch(page);
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .item")).toHaveText(["Second A", "Second B"]);
   expect(await page.evaluate(() => window.eventCounts)).toEqual({ input: 1, change: 1 });
 
   await page.locator("#many").focus();
@@ -513,7 +566,7 @@ test("preserves keyboard selection and light-DOM focus behavior", async () => {
       () =>
         document
           .querySelector("[data-tabby-select-host]")
-          .shadowRoot.querySelector(".query span").textContent
+          .shadowRoot.querySelector(".query").value
     )
   ).toBe("Option ");
   await page.keyboard.press("Escape");
@@ -536,6 +589,10 @@ test("preserves keyboard selection and light-DOM focus behavior", async () => {
   await page.keyboard.type("Option 1");
   await page.keyboard.press("Tab");
   await expect(page.locator("#second")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await openFocusedSelectSearch(page);
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .item")).toHaveText(["Second A", "Second B"]);
   expect(await page.evaluate(() => window.eventCounts)).toEqual({ input: 2, change: 2 });
 
   await page.locator("#positiveSelect").focus();
@@ -564,7 +621,7 @@ test("handles empty and disabled options without bypassing native constraints", 
   await page.goto(`http://127.0.0.1:${port}/allowed/options`);
   await page.locator("#before").click();
   await page.locator("#optionStates").focus();
-  await waitForSuggestion(page);
+  await openFocusedSelectSearch(page);
 
   expect(
     await page.evaluate(() => {
@@ -594,13 +651,14 @@ test("handles empty and disabled options without bypassing native constraints", 
 
   await page.locator("#optionStates").focus();
   await page.keyboard.type("Enabled");
-  await page.locator("#optionStates").evaluate((select) => {
+  await page.locator("[data-tabby-select-host] .query").evaluate((input) => {
+    const select = document.getElementById("optionStates");
     select.options[3].disabled = true;
-    select.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true, composed: true, cancelable: true })
     );
   });
-  await expect(page.locator("#optionStates")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
   expect(await page.locator("#optionStates").evaluate((select) => select.selectedIndex)).toBe(0);
   expect(await page.evaluate(() => window.optionStateEvents)).toEqual({ input: 1, change: 1 });
   await page.close();
@@ -685,18 +743,18 @@ test("updates an active search without committing and preserves keyboard selecti
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");
   const items = page.locator("[data-tabby-select-host] .item");
-  const query = page.locator("[data-tabby-select-host] .query span").first();
+  const query = page.locator("[data-tabby-select-host] .query");
   const pending = page.locator("[data-tabby-select-host] .pending");
   await page.locator("#searchBefore").click();
   await select.focus();
-  await waitForSuggestion(page);
+  await openFocusedSelectSearch(page);
   await expect(items).toHaveCount(6);
   await page.keyboard.type("pan");
   await expect(items).toHaveText(["Panama"]);
   await expect(pending).toHaveText("Panama");
 
   await setSettings({ searchMode: "contains" });
-  await expect(query).toHaveText("pan");
+  await expect(query).toHaveValue("pan");
   await expect(items).toHaveText(["Japan", "Panama", "Japanese", "New Japan"]);
   await expect(pending).toHaveText("Japan");
   await expect(select).toHaveJSProperty("selectedIndex", 0);
@@ -760,7 +818,7 @@ test("applies search mode changes to all frame types", async () => {
     await page.keyboard.type("pan");
     await expect(frame.locator("[data-tabby-select-host] .item")).toHaveText(["No matching options"]);
     await setSettings({ searchMode: "contains" });
-    await expect(frame.locator("[data-tabby-select-host] .query span").first()).toHaveText("pan");
+    await expect(frame.locator("[data-tabby-select-host] .query")).toHaveValue("pan");
     await expect(frame.locator("[data-tabby-select-host] .pending")).toHaveText("Japan");
     await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 0);
     expect(await frame.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
@@ -787,5 +845,881 @@ test("applies search mode changes to all frame types", async () => {
   await expect(dynamic.locator("[data-tabby-select-host] .pending")).toHaveText("Target");
   await page.keyboard.press("Tab");
   await expect(dynamic.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 2);
+  await page.close();
+});
+
+test("handles native IME composition without committing the select", async () => {
+  const page = await context.newPage();
+  await openUnicodeSearch(page);
+  const input = page.getByRole("combobox", { name: "Search options" });
+  const items = page.locator("[data-tabby-select-host] .item");
+  const cdp = await context.newCDPSession(page);
+  await expect(input).toHaveAttribute("tabindex", "-1");
+  await expect(items).toHaveCount(10);
+  await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+  await expect(input).toHaveValue("にほん");
+  await expect(items).toHaveCount(10);
+  for (const key of ["Enter", "ArrowDown", "Escape", "Tab"]) {
+    expect(await input.evaluate((element, key) => element.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true, composed: true, cancelable: true, isComposing: true })
+    ), key)).toBe(true);
+  }
+  await cdp.send("Input.imeSetComposition", { text: "日本", selectionStart: 2, selectionEnd: 2 });
+  await setSettings({ searchMode: "contains" });
+  await page.locator("#unicodeSelect").evaluate((select) => select.appendChild(new Option("日本国")));
+  await expect(items).toHaveCount(11);
+  await expect(input).toHaveValue("日本");
+  await cdp.send("Input.insertText", { text: "日本" });
+  await expect(input).toHaveValue("日本");
+  await expect(items).toHaveText(["日本", "日本語", "東京日本", "😀日本", "日本国"]);
+  await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 0);
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 1);
+  await expect(page.locator("#unicodeAfter")).toBeFocused();
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 1, change: 1 });
+  await cdp.detach();
+  await page.close();
+});
+
+test("supports full-width text, paste, replacement, and native deletion in both modes", async () => {
+  const page = await context.newPage();
+  for (const mode of ["prefix", "contains"]) {
+    await openUnicodeSearch(page, mode);
+    const input = page.locator("[data-tabby-select-host] .query");
+    const items = page.locator("[data-tabby-select-host] .item");
+    await page.keyboard.insertText("ＡＢ");
+    await expect(items).toHaveText(["ＡＢＣ"]);
+    await page.keyboard.press("Control+a");
+    await page.keyboard.insertText("AB");
+    await expect(items).toHaveText(["ABC"]);
+    await page.keyboard.press("Control+a");
+    await page.keyboard.insertText("にほん");
+    await expect(items).toHaveText(["にほん"]);
+    await page.keyboard.press("Control+a");
+    await page.keyboard.insertText("ニホン");
+    await expect(items).toHaveText(["ニホン"]);
+    await input.evaluate((element) => element.setSelectionRange(0, element.value.length));
+    await page.keyboard.insertText("１２３");
+    await expect(input).toHaveValue("１２３");
+    await expect(items).toHaveText(["１２３"]);
+    await page.keyboard.press("Control+a");
+    await page.keyboard.insertText("😀日");
+    await page.keyboard.press("Backspace");
+    await expect(input).toHaveValue("😀");
+    await page.keyboard.press("Backspace");
+    await expect(input).toHaveValue("");
+    await expect(items).toHaveCount(10);
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: `http://127.0.0.1:${port}`
+    });
+    await page.evaluate(() => navigator.clipboard.writeText("日本語"));
+    await page.keyboard.press("Control+v");
+    await expect(input).toHaveValue("日本語");
+    await expect(items).toHaveText(["日本語"]);
+    expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+    await page.keyboard.press("Tab");
+    await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 2);
+    await expect(page.locator("#unicodeAfter")).toBeFocused();
+    expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 1, change: 1 });
+  }
+  await page.close();
+});
+
+test("handles composition cancellation and alternate event ordering", async () => {
+  const page = await context.newPage();
+  await openUnicodeSearch(page);
+  const input = page.locator("[data-tabby-select-host] .query");
+  const items = page.locator("[data-tabby-select-host] .item");
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+  await cdp.send("Input.imeSetComposition", { text: "", selectionStart: 0, selectionEnd: 0 });
+  await expect(input).toHaveValue("");
+  await expect(items).toHaveCount(10);
+  await input.evaluate((element) => {
+    element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true, data: "" }));
+    element.value = "日本";
+    element.dispatchEvent(new InputEvent("input", { bubbles: true, isComposing: true, data: "日本" }));
+    element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "日本" }));
+    element.dispatchEvent(new InputEvent("input", { bubbles: true, data: "日本" }));
+  });
+  await expect(input).toHaveValue("日本");
+  await expect(items).toHaveText(["日本", "日本語"]);
+  expect(await input.evaluate((element) => element.dispatchEvent(new KeyboardEvent("keydown", {
+    key: "Enter", keyCode: 229, bubbles: true, composed: true, cancelable: true
+  })))).toBe(true);
+  await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 0);
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.locator("#unicodeBefore")).toBeFocused();
+  await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 1);
+  await cdp.detach();
+  await page.close();
+});
+
+test("preserves mouse interaction and cleans up focused composition sessions", async () => {
+  const page = await context.newPage();
+  await openUnicodeSearch(page);
+  let input = page.locator("[data-tabby-select-host] .query");
+  await input.click();
+  await page.keyboard.insertText("日本");
+  await expect(input).toHaveValue("日本");
+  await page.locator("#unicodeSelect").evaluate((select) => {
+    select.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    select.focus();
+  });
+  await expect(page.locator("#unicodeSelect")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await page.locator("#unicodeBefore").focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Home");
+  await expect(input).toBeFocused();
+  await page.locator("#unicodeAfter").click();
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await page.locator("#unicodeSelect").evaluate((select) => {
+    select.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    select.focus();
+  });
+  await expect(page.locator("#unicodeSelect")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await page.locator("#unicodeBefore").focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Home");
+  await expect(input).toBeFocused();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+  await setSettings({ manualEnabledOverride: false });
+  await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
+  await expect(page.locator("#unicodeSelect")).toBeFocused();
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+  await setSettings({ manualEnabledOverride: true });
+  await page.locator("#unicodeBefore").focus();
+  await page.keyboard.press("Tab");
+  input = page.locator("[data-tabby-select-host] .query");
+  await page.keyboard.press("Home");
+  await expect(input).toHaveValue("");
+  await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+  await page.locator("#unicodeSelect").evaluate((select) => select.remove());
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+  await cdp.detach();
+  await page.close();
+});
+
+test("supports Japanese IME composition inside all supported frame types", async () => {
+  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
+  const cdp = await context.newCDPSession(page);
+  for (const name of ["same", "cross", "nested", "blank", "srcdoc"]) {
+    const frame = page.frame({ name });
+    await frame.locator("#frameSelect").evaluate((select) => {
+      select.innerHTML = '<option>Initial</option><option>日本</option><option>日本語</option>';
+    });
+    await openFrameSuggestion(frame);
+    const input = frame.locator("[data-tabby-select-host] .query");
+    await expect(input).toBeFocused();
+    await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+    await expect(input).toHaveValue("にほん");
+    await expect(frame.locator("[data-tabby-select-host] .item")).toHaveCount(3);
+    await cdp.send("Input.insertText", { text: "日本" });
+    await expect(input).toHaveValue("日本");
+    await expect(frame.locator("[data-tabby-select-host] .item")).toHaveText(["日本", "日本語"]);
+    await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 0);
+    await page.keyboard.press("Enter");
+    await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 1);
+    await expect(frame.locator("#frameAfter")).toBeFocused();
+  }
+  await cdp.detach();
+  await page.close();
+});
+
+test("omits the key trigger setting even when a legacy value is stored", async () => {
+  await setSettings({ searchMode: "contains", urlAllowPatterns: "https://example.com/*", manualEnabledOverride: true });
+  const options = await context.newPage();
+  for (const legacyValue of [false, true, undefined]) {
+    if (legacyValue === undefined) {
+      await worker.evaluate(() => chrome.storage.local.remove("showSuggestionsOnKeydown"));
+    } else {
+      await setSettings({ showSuggestionsOnKeydown: legacyValue });
+    }
+    await options.goto(`chrome-extension://${extensionId}/options.html`);
+    await expect(options.locator("#status")).toHaveText("Current settings loaded.");
+    await expect(options.locator("#showSuggestionsOnKeydown")).toHaveCount(0);
+    await expect(options.locator("#suggestion-trigger-description")).toHaveCount(0);
+    await expect(options.locator("#switchFromPickerOnKeydown")).toBeEnabled();
+    await expect(options.locator("#searchModeContains")).toBeChecked();
+    await expect(options.locator("#urlAllowPatterns")).toHaveValue("https://example.com/*");
+  }
+  await options.close();
+});
+
+async function mouseFocusSelect(select) {
+  await select.evaluate((element) => {
+    element.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    element.focus();
+  });
+  await expect(select).toBeFocused();
+}
+
+test("always opens on a focused select key and ignores stored or live legacy values", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  const select = page.locator("#searchSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  for (const legacyValue of [false, true, undefined]) {
+    if (legacyValue === undefined) {
+      await worker.evaluate(() => chrome.storage.local.remove("showSuggestionsOnKeydown"));
+    } else {
+      await setSettings({ showSuggestionsOnKeydown: legacyValue });
+    }
+    await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+    // A real mouse click still opens the browser's native dropdown.
+    await select.click();
+    await page.keyboard.press("Escape");
+    await expect(select).toBeFocused();
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await page.keyboard.press("Shift");
+    await page.keyboard.press("Control+a");
+    await expect(select).toBeFocused();
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await page.keyboard.press("j");
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("j");
+    await expect(page.locator("[data-tabby-select-host] .item")).toHaveText(["Japan", "Japanese"]);
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+    await setSettings({ showSuggestionsOnKeydown: false });
+    await expect(input).toHaveValue("j");
+    await page.keyboard.press("Enter");
+    await expect(select).toHaveJSProperty("selectedIndex", 1);
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+    await expect(page.locator("#searchAfter")).toBeFocused();
+    await mouseFocusSelect(select);
+    await page.keyboard.press("Home");
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("");
+    await expect(select).toHaveJSProperty("selectedIndex", 1);
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+  }
+  await page.close();
+});
+
+test("does not open suggestions for arrow or Escape keys on a focused select or its open picker", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const root = page.locator("[data-tabby-select-host] .root");
+  for (const size of [1, 5]) {
+    await select.evaluate((element, size) => { element.size = size; }, size);
+    for (const key of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape"]) {
+      await mouseFocusSelect(select);
+      await page.keyboard.press(key);
+      await expect(select).toBeFocused();
+      await expect(root).toBeHidden();
+      // These keys retain their default browser handling.
+      expect(await select.evaluate((element, key) => element.dispatchEvent(new KeyboardEvent("keydown", {
+        key, bubbles: true, cancelable: true
+      })), key)).toBe(true);
+    }
+  }
+  await setSettings({ switchFromPickerOnKeydown: true });
+  for (const key of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape"]) {
+    await openSelectPicker(select);
+    await page.keyboard.press(key);
+    await expect(root).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+  }
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await page.close();
+});
+
+test("keeps search closed when its select regains focus without a trigger key", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  const root = page.locator("[data-tabby-select-host] .root");
+  for (const key of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape"]) {
+    await mouseFocusSelect(select);
+    await page.keyboard.press("j");
+    await expect(input).toBeFocused();
+    // A page or browser may return focus directly, without a mouse event.
+    await select.focus();
+    await expect(select).toBeFocused();
+    await expect(root).toBeHidden();
+    await page.keyboard.press(key);
+    await expect(select).toBeFocused();
+    await expect(root).toBeHidden();
+  }
+  await page.close();
+});
+
+test("does not open suggestions when IME masks arrow or Escape key names", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/ime`);
+  const select = page.locator("#unicodeSelect");
+  const root = page.locator("[data-tabby-select-host] .root");
+  const cdp = await context.newCDPSession(page);
+  for (const code of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape"]) {
+    await mouseFocusSelect(select);
+    // With an IME enabled, key can be Process and keyCode 229 for physical navigation keys.
+    await cdp.send("Input.dispatchKeyEvent", {
+      type: "keyDown", key: "Process", code, windowsVirtualKeyCode: 229
+    });
+    await cdp.send("Input.dispatchKeyEvent", {
+      type: "keyUp", key: "Process", code, windowsVirtualKeyCode: 229
+    });
+    await expect(select).toBeFocused();
+    await expect(root).toBeHidden();
+  }
+  for (const keyCode of [27, 37, 38, 39, 40]) {
+    await mouseFocusSelect(select);
+    expect(await select.evaluate((element, keyCode) => element.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Unidentified", keyCode, bubbles: true, cancelable: true
+    })), keyCode)).toBe(true);
+    await expect(select).toBeFocused();
+    await expect(root).toBeHidden();
+  }
+  await cdp.detach();
+  await page.close();
+});
+
+test("opens with control and IME keys without committing and keeps native Tab navigation", async () => {
+  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/ime`);
+  const select = page.locator("#unicodeSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  for (const key of ["Enter", "Home", "End", "Backspace", "Delete"]) {
+    await mouseFocusSelect(select);
+    await page.keyboard.press(key);
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("");
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+  }
+  await mouseFocusSelect(select);
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#unicodeAfter")).toBeFocused();
+  await mouseFocusSelect(select);
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.locator("#unicodeBefore")).toBeFocused();
+  // Autofocus is suppressed on a fresh page but may be opened explicitly with a key.
+  await page.reload();
+  await select.focus();
+  await expect(select).toBeFocused();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Process", windowsVirtualKeyCode: 229 });
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Process", windowsVirtualKeyCode: 229 });
+  await expect(input).toBeFocused();
+  await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+  await expect(input).toHaveValue("にほん");
+  await expect(select).toHaveJSProperty("selectedIndex", 0);
+  await cdp.send("Input.insertText", { text: "日本" });
+  await expect(input).toHaveValue("日本");
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+  await page.keyboard.press("Enter");
+  await expect(select).toHaveJSProperty("selectedIndex", 1);
+  await expect(page.locator("#unicodeAfter")).toBeFocused();
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 1, change: 1 });
+  await cdp.detach();
+  await setSettings({ showSuggestionsOnKeydown: false });
+  await page.close();
+});
+
+test("applies the key trigger to existing and newly added frames", async () => {
+  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
+  await openFrameSuggestion(page.frame({ name: "same" }));
+  await page.evaluate(() => {
+    const iframe = document.createElement("iframe");
+    iframe.name = "dynamic";
+    iframe.src = "/frames/select";
+    document.body.append(iframe);
+  });
+  await expect.poll(() => Boolean(page.frame({ name: "dynamic" }))).toBe(true);
+  for (const name of ["same", "cross", "nested", "blank", "srcdoc", "dynamic"]) {
+    const frame = page.frame({ name });
+    const select = frame.locator("#frameSelect");
+    await frame.locator("#frameBefore").focus();
+    await select.focus();
+    await expect(select).toBeFocused();
+    await expect(frame.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await mouseFocusSelect(select);
+    await page.keyboard.press("a");
+    const input = frame.locator("[data-tabby-select-host] .query");
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("a");
+    await expect(frame.locator("[data-tabby-select-host] .item")).toHaveText(["Alpha"]);
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    await page.keyboard.press("Shift+Tab");
+    await expect(select).toHaveJSProperty("selectedIndex", 1);
+    await expect(frame.locator("#frameBefore")).toBeFocused();
+  }
+  await setSettings({ showSuggestionsOnKeydown: false });
+  const frame = page.frame({ name: "cross" });
+  await mouseFocusSelect(frame.locator("#frameSelect"));
+  await page.keyboard.press("Home");
+  await expect(frame.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 1);
+  await page.close();
+});
+
+test("always waits for a select key after Tab and programmatic focus", async () => {
+  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const root = page.locator("[data-tabby-select-host] .root");
+  const input = page.locator("[data-tabby-select-host] .query");
+  await page.locator("#searchBefore").click();
+  await page.keyboard.press("Tab");
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  // Refreshes and setting updates must also leave the UI hidden while waiting.
+  await select.evaluate((element) => element.add(new Option("Jamaica")));
+  await setSettings({ searchMode: "contains" });
+  await page.keyboard.press("Shift");
+  await page.keyboard.press("Control+a");
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  await expect(select).toHaveJSProperty("selectedIndex", 0);
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await page.keyboard.press("j");
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue("j");
+  await expect(page.locator("[data-tabby-select-host] .item")).toHaveText(["Japan", "Japanese", "New Japan", "Jamaica"]);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  await page.locator("#searchBefore").focus();
+  await select.focus();
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#searchAfter")).toBeFocused();
+  await expect(root).toBeHidden();
+  await select.focus();
+  await expect(root).toBeHidden();
+  await page.keyboard.press("Home");
+  await expect(input).toBeFocused();
+  await expect(select).toHaveJSProperty("selectedIndex", 0);
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await setSettings({ showSuggestionsOnKeydown: false });
+  await expect(input).toBeFocused();
+  await page.locator("#searchBefore").focus();
+  await page.keyboard.press("Tab");
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  await page.keyboard.press("j");
+  await expect(input).toBeFocused();
+  await page.close();
+});
+
+test("saves the open-list switch independently and reports missing browser support", async () => {
+  await setSettings({ searchMode: "contains", urlAllowPatterns: "https://example.com/*" });
+  await worker.evaluate(() => chrome.storage.local.remove("switchFromPickerOnKeydown"));
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  const trigger = options.locator("#switchFromPickerOnKeydown");
+  await expect(trigger).toBeEnabled();
+  await expect(trigger).not.toBeChecked();
+  await expect(options.locator("#picker-unavailable")).toBeHidden();
+  await options.locator("#urlAllowPatterns").evaluate((input) => { input.value = "unsaved"; });
+  await trigger.check();
+  await expect.poll(() => worker.evaluate(() => chrome.storage.local.get([
+    "switchFromPickerOnKeydown", "searchMode", "urlAllowPatterns"
+  ]))).toEqual({ switchFromPickerOnKeydown: true, searchMode: "contains", urlAllowPatterns: "https://example.com/*" });
+  await options.reload();
+  await expect(trigger).toBeEnabled();
+  await expect(trigger).toBeChecked();
+  await trigger.uncheck();
+  await expect.poll(() => worker.evaluate(() => chrome.storage.local.get("switchFromPickerOnKeydown")))
+    .toEqual({ switchFromPickerOnKeydown: false });
+  await options.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-picker-options.png"), fullPage: true });
+  await options.close();
+  const unsupported = await context.newPage();
+  await unsupported.addInitScript(() => { CSS.supports = () => false; });
+  await unsupported.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(unsupported.locator("#status")).toHaveText("Current settings loaded.");
+  await expect(unsupported.locator("#switchFromPickerOnKeydown")).toBeDisabled();
+  await expect(unsupported.locator("#picker-unavailable")).toBeVisible();
+  await unsupported.close();
+});
+
+async function openSelectPicker(select) {
+  await expect.poll(() => select.evaluate((element) => getComputedStyle(element).appearance)).toBe("base-select");
+  await select.click();
+  await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(true);
+}
+
+const selectSizeAttributes = [null, "", "0", "1", "2", "5", "100", "-1", "invalid", "4294967295"];
+
+test("keeps suggestions hidden when clicking listbox options", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const root = page.locator("[data-tabby-select-host] .root");
+  const input = page.locator("[data-tabby-select-host] .query");
+  const option = select.locator("option").filter({ hasText: /^Japan$/ });
+  for (const showSuggestionsOnKeydown of [false, true]) {
+    await setSettings({ showSuggestionsOnKeydown });
+    for (const size of [2, 5, 100]) {
+      await select.evaluate((element, size) => { element.size = size; }, size);
+      await page.locator("#searchBefore").click();
+      await option.click();
+      await expect(select).toBeFocused();
+      await expect(select).toHaveJSProperty("selectedIndex", 1);
+      await expect(root).toBeHidden();
+
+      // A key after keyboard focus opens search; clicking an option hides it again.
+      await page.locator("#searchBefore").focus();
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("j");
+      await expect(input).toBeFocused();
+      await option.click();
+      await expect(select).toBeFocused();
+      await expect(root).toBeHidden();
+      await option.click();
+      await expect(root).toBeHidden();
+    }
+  }
+  await page.close();
+});
+
+test("opens suggestions on a key after clicking a listbox option", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  const option = select.locator("option").filter({ hasText: /^Initial$/ });
+  for (const size of [2, 5, 100]) {
+    await select.evaluate((element, size) => { element.size = size; }, size);
+    for (const key of ["j", "Home", "Enter"]) {
+      await page.locator("#searchBefore").click();
+      await option.click();
+      await expect(select).toBeFocused();
+      await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+      await page.keyboard.press(key);
+      await expect(input).toBeFocused();
+      await expect(input).toHaveValue(key === "j" ? "j" : "");
+      await expect(select).toHaveJSProperty("selectedIndex", 0);
+    }
+  }
+  await page.close();
+});
+
+test("searches and confirms single selects independently of their size", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  for (const size of selectSizeAttributes) {
+    await select.evaluate((element, size) => {
+      if (size === null) element.removeAttribute("size");
+      else element.setAttribute("size", size);
+      element.selectedIndex = 0;
+      window.searchEvents = { input: 0, change: 0 };
+    }, size);
+    await page.locator("#searchBefore").focus();
+    await page.keyboard.press("Tab");
+    await expect(select).toBeFocused();
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await page.keyboard.press("p");
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("p");
+    await input.fill("pan");
+    await expect(page.locator("[data-tabby-select-host] .pending")).toHaveText("Panama");
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+    await page.keyboard.press("Tab");
+    await expect(select).toHaveJSProperty("selectedIndex", 2);
+    await expect(page.locator("#searchAfter")).toBeFocused();
+    expect(await select.getAttribute("size")).toBe(size);
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+  }
+  await page.close();
+});
+
+test("switches open lists to search for every size and restores the size attribute", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  for (const size of selectSizeAttributes) {
+    await select.evaluate((element, size) => {
+      if (size === null) element.removeAttribute("size");
+      else element.setAttribute("size", size);
+      element.selectedIndex = 0;
+      window.searchEvents = { input: 0, change: 0 };
+    }, size);
+    await setSettings({ switchFromPickerOnKeydown: true });
+    await expect(select).toHaveJSProperty("size", 1);
+    await openSelectPicker(select);
+    await page.keyboard.type("pan");
+    await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("pan");
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+    await page.keyboard.press("Enter");
+    await expect(select).toHaveJSProperty("selectedIndex", 2);
+    await expect(page.locator("#searchAfter")).toBeFocused();
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+    await setSettings({ switchFromPickerOnKeydown: false });
+    await expect.poll(() => select.getAttribute("size")).toBe(size);
+  }
+  await page.close();
+});
+
+test("preserves an unselected listbox and page size changes during search", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  await select.evaluate((element) => { element.size = 5; element.selectedIndex = -1; });
+  await setSettings({ switchFromPickerOnKeydown: true });
+  await expect(select).toHaveJSProperty("size", 1);
+  await expect(select).toHaveJSProperty("selectedIndex", -1);
+  await openSelectPicker(select);
+  await page.keyboard.type("pan");
+  await expect(input).toHaveValue("pan");
+  await expect(input).toBeFocused();
+  await select.evaluate((element) => { element.size = 12; });
+  await expect(select).toHaveJSProperty("size", 1);
+  await expect(select).toHaveJSProperty("selectedIndex", -1);
+  await expect(input).toHaveValue("pan");
+  await expect(input).toBeFocused();
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await expect(select).toHaveJSProperty("size", 12);
+  await expect(select).toHaveJSProperty("selectedIndex", -1);
+  for (const size of [null, "invalid", "1"]) {
+    await setSettings({ switchFromPickerOnKeydown: true });
+    await expect(select).toHaveJSProperty("size", 1);
+    await select.evaluate((element, size) => {
+      if (size === null) element.removeAttribute("size");
+      else element.setAttribute("size", size);
+    }, size);
+    await expect.poll(() => select.getAttribute("size")).toBe("1");
+    const selectedIndex = await select.evaluate((element) => element.selectedIndex);
+    await setSettings({ switchFromPickerOnKeydown: false });
+    await expect.poll(() => select.getAttribute("size")).toBe(size);
+    await expect(select).toHaveJSProperty("selectedIndex", selectedIndex);
+  }
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await page.close();
+});
+
+test("switches a clicked-open list to search while preserving text, values, and mouse selection", async () => {
+  await setSettings({ switchFromPickerOnKeydown: true, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  for (const mode of ["prefix", "contains"]) {
+    await setSettings({ searchMode: mode });
+    await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+    const select = page.locator("#searchSelect");
+    const input = page.locator("[data-tabby-select-host] .query");
+    await openSelectPicker(select);
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await page.keyboard.press("Shift");
+    await page.keyboard.press("Control+a");
+    await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(true);
+    await page.keyboard.type("pan");
+    await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("pan");
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+    await expect(page.locator("[data-tabby-select-host] .item")).toHaveText(mode === "prefix"
+      ? ["Panama"] : ["Japan", "Panama", "Japanese", "New Japan"]);
+    await page.keyboard.press("Enter");
+    await expect(select).toHaveJSProperty("selectedIndex", mode === "prefix" ? 2 : 1);
+    await expect(page.locator("#searchAfter")).toBeFocused();
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+    await openSelectPicker(select);
+    // Mouse-only selection continues to use the select's own options and events.
+    await select.locator("option").filter({ hasText: /^Japanese$/ }).click();
+    await expect(select).toHaveJSProperty("selectedIndex", 3);
+    await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 2, change: 2 });
+  }
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await page.close();
+});
+
+test("does not commit opening control or IME keys and preserves Tab traversal", async () => {
+  await setSettings({ switchFromPickerOnKeydown: true, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/ime`);
+  const select = page.locator("#unicodeSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  for (const key of ["Enter", "Home", "End", "Backspace", "Delete"]) {
+    await openSelectPicker(select);
+    await page.keyboard.press(key);
+    await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("");
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+  }
+  await openSelectPicker(select);
+  await page.keyboard.press("Tab");
+  // The browser's base picker uses the first Tab to close and focus its select.
+  await expect(select).toBeFocused();
+  await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#unicodeAfter")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await openSelectPicker(select);
+  await page.keyboard.press("Shift+Tab");
+  await expect(select).toBeFocused();
+  await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.locator("#unicodeBefore")).toBeFocused();
+  await openSelectPicker(select);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Process", windowsVirtualKeyCode: 229 });
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Process", windowsVirtualKeyCode: 229 });
+  await expect(input).toBeFocused();
+  await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+  await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+  await expect(input).toHaveValue("にほん");
+  await cdp.send("Input.insertText", { text: "日本" });
+  await expect(input).toHaveValue("日本");
+  await expect(select).toHaveJSProperty("selectedIndex", 0);
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+  await page.keyboard.press("Enter");
+  await expect(select).toHaveJSProperty("selectedIndex", 1);
+  await expect(page.locator("#unicodeAfter")).toBeFocused();
+  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 1, change: 1 });
+  await cdp.detach();
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await page.close();
+});
+
+test("restores original styles and handles dynamic selects, eligibility, and activation", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`, manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  await select.evaluate((element) => {
+    element.style.setProperty("appearance", "none", "important");
+    element.style.color = "red";
+    element.setAttribute("data-tabby-select-base-picker", "page-owned");
+  });
+  await setSettings({ switchFromPickerOnKeydown: true });
+  await openSelectPicker(select);
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await expect.poll(() => select.evaluate((element) => ({
+    appearance: element.style.getPropertyValue("appearance"),
+    priority: element.style.getPropertyPriority("appearance"),
+    attribute: element.getAttribute("data-tabby-select-base-picker"),
+    open: element.matches(":open")
+  }))).toEqual({ appearance: "none", priority: "important", attribute: "page-owned", open: false });
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await setSettings({ switchFromPickerOnKeydown: true });
+  await expect.poll(() => select.evaluate((element) => getComputedStyle(element).appearance)).toBe("base-select");
+  await select.evaluate((element) => { element.multiple = true; });
+  await expect.poll(() => select.evaluate((element) => element.style.appearance)).toBe("none");
+  await select.evaluate((element) => { element.multiple = false; element.size = 3; });
+  await expect.poll(() => select.evaluate((element) => element.style.appearance)).toBe("base-select");
+  await expect(select).toHaveJSProperty("size", 1);
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await expect(select).toHaveJSProperty("size", 3);
+  await setSettings({ switchFromPickerOnKeydown: true });
+  await expect(select).toHaveJSProperty("size", 1);
+  await select.evaluate((element) => { element.size = 12; });
+  await expect(select).toHaveJSProperty("size", 1);
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await expect(select).toHaveJSProperty("size", 12);
+  await setSettings({ switchFromPickerOnKeydown: true });
+  await expect(select).toHaveJSProperty("size", 1);
+  await select.evaluate((element) => { element.size = 1; element.style.color = "blue"; });
+  await expect.poll(() => select.evaluate((element) => element.style.appearance)).toBe("base-select");
+  await page.evaluate(() => {
+    const dynamic = document.createElement("select");
+    dynamic.id = "dynamicSelect";
+    dynamic.size = 5;
+    dynamic.innerHTML = '<option>Initial</option><option>Target</option>';
+    document.body.append(dynamic);
+  });
+  const dynamic = page.locator("#dynamicSelect");
+  await openSelectPicker(dynamic);
+  await page.keyboard.press("t");
+  await expect(page.locator("[data-tabby-select-host] .query")).toHaveValue("t");
+  const removed = await dynamic.elementHandle();
+  await dynamic.evaluate((element) => element.remove());
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await expect.poll(() => removed.evaluate((element) => element.style.appearance)).toBe("");
+  expect(await removed.evaluate((element) => element.size)).toBe(5);
+  await setSettings({ manualEnabledOverride: false });
+  await expect.poll(() => select.evaluate((element) => element.style.appearance)).toBe("none");
+  await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
+  await setSettings({ manualEnabledOverride: true });
+  await expect.poll(() => select.evaluate((element) => element.style.appearance)).toBe("base-select");
+  await page.evaluate(() => history.pushState({}, "", "/blocked/search"));
+  await expect.poll(() => select.evaluate((element) => element.style.appearance)).toBe("none");
+  await page.evaluate(() => history.pushState({}, "", "/allowed/search"));
+  await expect.poll(() => select.evaluate((element) => element.style.appearance)).toBe("base-select");
+  // Later page changes to inline appearance must survive cleanup.
+  await select.evaluate((element) => element.style.setProperty("appearance", "auto"));
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await expect.poll(() => select.evaluate((element) => element.getAttribute("data-tabby-select-base-picker"))).toBe("page-owned");
+  await expect(select).toHaveCSS("color", "rgb(0, 0, 255)");
+  expect(await select.evaluate((element) => element.style.appearance)).toBe("auto");
+  expect(await select.evaluate((element) => element.size)).toBe(1);
+  await page.close();
+});
+
+test("applies picker switching to existing and new frames and pages with restrictive CSP", async () => {
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
+  await openFrameSuggestion(page.frame({ name: "same" }));
+  await setSettings({ switchFromPickerOnKeydown: true });
+  await page.evaluate(() => {
+    const iframe = document.createElement("iframe");
+    iframe.name = "dynamic";
+    iframe.src = "/frames/select";
+    document.body.append(iframe);
+  });
+  await expect.poll(() => Boolean(page.frame({ name: "dynamic" }))).toBe(true);
+  for (const name of ["same", "cross", "nested", "blank", "srcdoc", "dynamic"]) {
+    const frame = page.frame({ name });
+    const select = frame.locator("#frameSelect");
+    await openSelectPicker(select);
+    await expect(frame.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await page.keyboard.press("t");
+    await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+    await expect(frame.locator("[data-tabby-select-host] .query")).toHaveValue("t");
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    await page.keyboard.press("Enter");
+    await expect(select).toHaveJSProperty("selectedIndex", 2);
+    await expect(frame.locator("#frameAfter")).toBeFocused();
+  }
+  await page.goto(`http://127.0.0.1:${port}/allowed/picker-csp`);
+  const select = page.locator("#searchSelect");
+  await openSelectPicker(select);
+  await page.keyboard.press("j");
+  await expect.poll(() => select.evaluate((element) => element.matches(":open"))).toBe(false);
+  await expect(page.locator("[data-tabby-select-host] .query")).toHaveValue("j");
+  await expect(select).toHaveJSProperty("selectedIndex", 0);
+  await setSettings({ switchFromPickerOnKeydown: false });
+  await expect.poll(() => select.evaluate((element) => element.style.appearance)).toBe("");
+  await expect(select).not.toHaveAttribute("style", /.+/);
   await page.close();
 });

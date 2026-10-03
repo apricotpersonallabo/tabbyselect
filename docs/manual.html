@@ -48,6 +48,7 @@
               <li><div><strong data-i18n="setupOneTitle">設定ページを開く</strong><p data-i18n="setupOneText">ツールバーのTabbySelectアイコンをクリックし、「設定ページを開く」を選択します。</p></div></li>
               <li><div><strong data-i18n="setupTwoTitle">有効URLを指定する</strong><p data-i18n="setupTwoText">URLパターンを1行ずつ入力します。*は任意の文字列に一致します。空欄の場合は、すべてのhttp/https URLが対象です。</p><code>https://example.com/*</code></div></li>
               <li><div><strong data-i18n="setupSearchTitle">検索方式を選ぶ</strong><p data-i18n="setupSearchText">設定ページの「検索方式」で先頭一致（標準）または部分一致を選びます。Ja は先頭一致で Japan に、pan は部分一致で Japan に一致します。大文字・小文字は区別しません。変更は自動保存され、開いているページとiframeにも反映されます。</p></div></li>
+              <li><div><strong data-i18n="setupPickerTitle">一覧から候補UIへの切り替えを設定する</strong><p data-i18n="setupPickerText">「一覧表示中のキー入力で候補UIに切り替える」をオンにすると、対応ブラウザではクリックで開いた一覧からキー入力で検索欄へ切り替えます。最初の文字も入力され、確定までは選択値を変更しません。セレクトボックスと一覧の見た目が変わります。初期値はオフで、オフに戻すと元の描画方式に戻ります。未対応ブラウザでは設定を変更できず、元の一覧を使用します。矢印キー、Esc、Tab、修飾キー単独、ショートカットは切り替えの対象外です。</p></div></li>
               <li><div><strong data-i18n="setupThreeTitle">対象ページでオンにする</strong><p data-i18n="setupThreeText">アイコンを再度クリックし、ポップアップのトグルをオンにします。設定変更は開いているページにも反映されます。</p></div></li>
             </ol>
           </section>
@@ -55,13 +56,13 @@
           <section id="keyboard" class="manual-section">
             <p class="section-index">02</p>
             <h2 data-i18n="keyboardTitle">キーボード操作</h2>
-            <p data-i18n="keyboardIntro">Tabキーでselectにフォーカスしてから文字を入力します。マウスクリックでフォーカスした場合、そのフォーカス中は候補UIを表示しません。</p>
+            <p data-i18n="keyboardIntro">Tabキーでselectへ移動すると、キー入力までselectにフォーカスが留まります。キーを押すと検索欄が開き、最初の文字から検索できます。この動作は常に有効です。矢印キー、Esc、Tab、修飾キー単独、ショートカットでは検索欄を開きません。日本語や全角文字も入力できます。IME変換中は入力欄だけ更新し、文字の確定後に候補を検索します。全角・半角は区別します。マウスでselectをクリックした場合も、その後のキー入力で検索欄を開けます。</p>
             <div class="key-table" role="table" aria-label="キーボード操作" data-i18n-aria-label="keyboardTableLabel">
-              <div role="row"><span role="cell"><kbd>A–Z</kbd></span><span role="cell" data-i18n="keyType">設定した検索方式で一致する候補に絞り込む</span></div>
+              <div role="row"><span role="cell"><kbd data-i18n="keyCharacters">文字入力</kbd></span><span role="cell" data-i18n="keyType">設定した検索方式で一致する候補に絞り込む</span></div>
               <div role="row"><span role="cell"><kbd>↑</kbd> <kbd>↓</kbd></span><span role="cell" data-i18n="keyArrows">候補のハイライトを移動する</span></div>
               <div role="row"><span role="cell"><kbd>Backspace</kbd></span><span role="cell" data-i18n="keyBackspace">検索文字を1文字削除する</span></div>
               <div role="row"><span role="cell"><kbd>Esc</kbd></span><span role="cell" data-i18n="keyEscape">検索をクリアし、空の状態でもう一度押すと候補を閉じる</span></div>
-              <div role="row"><span role="cell"><kbd>Enter</kbd></span><span role="cell" data-i18n="keyEnter">候補を確定して次の入力項目へ移動する</span></div>
+              <div role="row"><span role="cell"><kbd>Enter</kbd></span><span role="cell" data-i18n="keyEnter">IME変換中は文字を確定する。文字確定後、もう一度押すと選択肢を確定して次へ移動する</span></div>
               <div role="row"><span role="cell"><kbd>Tab</kbd></span><span role="cell" data-i18n="keyTab">候補を確定して通常どおり次へ移動する</span></div>
             </div>
           </section>
@@ -117,7 +118,7 @@
               <li data-i18n="limitationNative">対象はネイティブHTMLの単一選択selectです。独自UIのドロップダウンとselect[multiple]は対象外です。</li>
               <li data-i18n="limitationDom">トップページとiframe内の通常DOMにあるselectが対象です。別ドメイン、入れ子、動的追加、about:blank・srcdocのiframeにも対応し、有効URLはトップページのURLで判定します。ページ側Shadow DOM内は対象外です。</li>
               <li data-i18n="limitationProtocol">有効化できるのはhttp://またはhttps://のページです。ブラウザ設定ページなどでは動作しません。</li>
-              <li data-i18n="limitationMouse">マウスでselectをクリックした場合、そのフォーカスが続く間はブラウザ標準の操作を優先します。</li>
+              <li data-i18n="limitationMouse">マウスでselectをクリックした直後はブラウザ標準の操作を優先します。その後のキー入力で検索欄を開けます。標準一覧の描画方式のままでは、ブラウザがキーを処理する場合があります。対応ブラウザで一覧からの切り替え設定をオンにすると、一覧の描画方式を変更してキー入力を受け取ります。</li>
             </ul>
           </section>
 

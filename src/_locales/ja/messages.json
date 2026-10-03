@@ -25,6 +25,8 @@
   "toggleSaved": { "message": "トグル設定を保存しました。" },
   "optionsOpenError": { "message": "設定ページを開けませんでした。" },
   "optionsDocumentTitle": { "message": "TabbySelect 設定" },
+  "optionsAboutExtension": { "message": "この拡張機能について" },
+  "supportSite": { "message": "サポートサイト" },
   "settingsSectionTitle": { "message": "設定" },
   "urlSettingsTitle": { "message": "有効URL設定" },
   "urlDescription": { "message": "下記パターンに一致したページでのみ拡張機能を有効化します。1行1パターンで指定し、* は任意文字列として使えます。空欄にすると、すべてのURLで有効になります。" },
@@ -49,6 +51,11 @@
   "settingsLoaded": { "message": "現在の設定を読み込みました。" },
   "settingsSaveError": { "message": "設定の保存に失敗しました。" },
   "settingsSaved": { "message": "設定を保存しました。" },
+  "suggestionSettingsTitle": { "message": "候補UIの表示" },
+  "switchFromPickerOnKeydown": { "message": "一覧表示中のキー入力で候補UIに切り替える" },
+  "pickerTriggerDescription": { "message": "初期値はオフです。対応ブラウザでは、セレクトボックスと一覧をカスタマイズ可能な描画方式に変更するため、見た目が変わります。一覧が開いているときにキーを押すと、一覧を閉じて検索欄を表示します。最初の文字も入力され、選択値は確定操作まで変わりません。矢印キー、Esc、Tab、修飾キー単独、ショートカットは通常の操作を維持します。変更は開いているページとiframeに反映され、オフにすると元の見た目に戻ります。" },
+  "pickerUnavailable": { "message": "このブラウザはこの設定に対応していません。元のセレクトボックスの一覧を使用します。" },
+  "searchQueryLabel": { "message": "選択肢を検索" },
   "noSuggestions": { "message": "一致する候補はありません" },
   "emptyOptionLabel": { "message": "（空欄）" }
 }

@@ -14,9 +14,28 @@ test("normalizes settings with stable defaults", () => {
       debugLogEnabled: true,
       urlAllowPatterns: "",
       manualEnabledOverride: false,
-      searchMode: "prefix"
+      searchMode: "prefix",
+      switchFromPickerOnKeydown: false
     }
   );
+});
+
+test("defaults invalid picker settings to off and detects missing browser support", () => {
+  for (const switchFromPickerOnKeydown of [undefined, null, false, "true", 1]) {
+    assert.equal(core.normalizeSettings({ switchFromPickerOnKeydown }).switchFromPickerOnKeydown, false);
+  }
+  assert.equal(core.normalizeSettings({ switchFromPickerOnKeydown: true }).switchFromPickerOnKeydown, true);
+  assert.equal(core.supportsBaseSelect(null), false);
+  assert.equal(core.supportsBaseSelect({}), false);
+  assert.equal(core.supportsBaseSelect({ supports: () => false }), false);
+  assert.equal(core.supportsBaseSelect({ supports: () => true }), true);
+});
+
+test("ignores obsolete key trigger settings", () => {
+  assert.equal(Object.hasOwn(core.STORAGE_KEYS, "showSuggestionsOnKeydown"), false);
+  for (const showSuggestionsOnKeydown of [undefined, null, false, true, "true", 1, {}, []]) {
+    assert.deepEqual(core.normalizeSettings({ showSuggestionsOnKeydown }), core.DEFAULT_SETTINGS);
+  }
 });
 
 test("defaults missing and invalid search modes to prefix", () => {

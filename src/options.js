@@ -9,6 +9,9 @@
 
   const urlAllowPatternsInput = document.getElementById("urlAllowPatterns");
   const searchModeInputs = Array.from(document.querySelectorAll('input[name="searchMode"]'));
+  const switchFromPickerOnKeydownInput = document.getElementById("switchFromPickerOnKeydown");
+  const pickerSupported = core.supportsBaseSelect();
+  document.getElementById("picker-unavailable").hidden = pickerSupported;
   const metaContactEmail = document.getElementById("metaContactEmail");
   const metaCopyright = document.getElementById("metaCopyright");
   const metaName = document.getElementById("metaName");
@@ -18,6 +21,7 @@
 
   if (
     !(urlAllowPatternsInput instanceof HTMLTextAreaElement) ||
+    !(switchFromPickerOnKeydownInput instanceof HTMLInputElement) ||
     !(status instanceof HTMLElement)
   ) {
     return;
@@ -52,6 +56,8 @@
 
         const settings = core.normalizeSettings(items);
         urlAllowPatternsInput.value = settings.urlAllowPatterns;
+        switchFromPickerOnKeydownInput.checked = settings.switchFromPickerOnKeydown;
+        switchFromPickerOnKeydownInput.disabled = !pickerSupported;
         for (const input of searchModeInputs) {
           input.checked = input.value === settings.searchMode;
           input.disabled = false;
@@ -79,6 +85,9 @@
 
   urlAllowPatternsInput.addEventListener("change", () => {
     saveSetting(STORAGE_KEYS.urlAllowPatterns, urlAllowPatternsInput.value);
+  });
+  switchFromPickerOnKeydownInput.addEventListener("change", () => {
+    saveSetting(STORAGE_KEYS.switchFromPickerOnKeydown, switchFromPickerOnKeydownInput.checked);
   });
   for (const input of searchModeInputs) {
     input.addEventListener("change", () => {

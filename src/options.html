@@ -45,7 +45,22 @@ https://*.example.org/forms/*"></textarea>
         <p class="description" data-i18n="searchCaseDescription">Both modes ignore uppercase and lowercase differences.</p>
       </section>
 
+      <section class="section" aria-labelledby="suggestion-settings-title">
+        <h3 id="suggestion-settings-title" class="section-title" data-i18n="suggestionSettingsTitle">Suggestion display</h3>
+        <label class="search-mode" for="switchFromPickerOnKeydown">
+          <input id="switchFromPickerOnKeydown" type="checkbox" aria-describedby="picker-trigger-description picker-unavailable" disabled />
+          <span data-i18n="switchFromPickerOnKeydown">Switch an open select list to suggestions on a key press</span>
+        </label>
+        <p id="picker-trigger-description" class="description" data-i18n="pickerTriggerDescription">Off by default. On supported browsers, enabling this changes the appearance of selects and their lists. A key press while the list is open closes it and opens the search field. The first character is preserved; the value changes only when confirmed. Arrow keys, Escape, Tab, modifier keys alone, and shortcuts keep their normal behavior. Changes apply to open pages and iframes. Turning this off restores the original appearance.</p>
+        <p id="picker-unavailable" class="description" data-i18n="pickerUnavailable" hidden>This browser does not support this setting. The original select list is used.</p>
+      </section>
+
       <div id="status" class="status" aria-live="polite"></div>
+    </section>
+
+    <section class="area manual-link" aria-labelledby="about-extension-title">
+      <h2 id="about-extension-title" class="area-title" data-i18n="optionsAboutExtension">About the extension</h2>
+      <a href="https://apricotpersonallabo.github.io/tabbyselect/" target="_blank" rel="noreferrer" data-i18n="supportSite">Support site</a>
     </section>
 
   </main>

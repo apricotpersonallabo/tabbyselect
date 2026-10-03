@@ -6,7 +6,6 @@
   const modules = globalThis.TabbySelectContent;
   let debugLogEnabled = false;
   let traceSequence = 0;
-  let pageJustLoaded = true;
 
   function debugLog(message, detail) {
     if (!debugLogEnabled) {
@@ -28,14 +27,8 @@
     debugLog(`[${traceId}] ${message}`, detail);
   }
 
-  function markPageAsLoaded() {
-    pageJustLoaded = false;
-  }
-
-  window.addEventListener("mousedown", markPageAsLoaded, { once: true });
-  window.addEventListener("keydown", markPageAsLoaded, { once: true });
-
-  const view = modules.createSuggestionView();
+  const view = modules.createSuggestionView({ queryLabel: i18n.t("searchQueryLabel") });
+  const pickerController = modules.createPickerController();
   const focusNavigator = modules.createFocusNavigator({
     isDebugEnabled: () => debugLogEnabled,
     debugLogWithTrace
@@ -43,7 +36,7 @@
   const session = modules.createSelectSession({
     view,
     focusNavigator,
-    isPageJustLoaded: () => pageJustLoaded,
+    pickerController,
     createTraceId,
     debugLog,
     debugLogWithTrace,
@@ -54,6 +47,7 @@
   const featureRuntime = modules.createFeatureRuntime({
     session,
     view,
+    pickerController,
     debugLog,
     loadMetadata: () =>
       core.loadMetadata(
@@ -68,6 +62,8 @@
     onStateChange({ active, settings, url }) {
       debugLogEnabled = settings.debugLogEnabled;
       session.setSearchMode(settings.searchMode);
+      pickerController.setEnabled(settings.switchFromPickerOnKeydown);
+      session.reposition();
       if (active) {
         featureRuntime.enable();
       } else {

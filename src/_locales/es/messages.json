@@ -25,6 +25,8 @@
   "toggleSaved": { "message": "Ajuste del interruptor guardado." },
   "optionsOpenError": { "message": "No se pudo abrir la página de configuración." },
   "optionsDocumentTitle": { "message": "Configuración de TabbySelect" },
+  "optionsAboutExtension": { "message": "Acerca de la extensión" },
+  "supportSite": { "message": "Sitio de soporte" },
   "settingsSectionTitle": { "message": "Configuración" },
   "urlSettingsTitle": { "message": "Configuración de URL activadas" },
   "urlDescription": { "message": "Activa la extensión solo en páginas que coincidan con los patrones siguientes. Introduce un patrón por línea; * coincide con cualquier texto. Déjalo vacío para activar la extensión en todas las URL." },
@@ -49,6 +51,11 @@
   "settingsLoaded": { "message": "Configuración actual cargada." },
   "settingsSaveError": { "message": "No se pudo guardar la configuración." },
   "settingsSaved": { "message": "Configuración guardada." },
+  "suggestionSettingsTitle": { "message": "Mostrar sugerencias" },
+  "switchFromPickerOnKeydown": { "message": "Cambiar una lista abierta a sugerencias al pulsar una tecla" },
+  "pickerTriggerDescription": { "message": "Desactivado de forma predeterminada. En navegadores compatibles, el selector y su lista usan una representación personalizable que cambia su aspecto. Pulsar una tecla en la lista abierta la cierra y abre la búsqueda. Se conserva el primer carácter; el valor solo cambia al confirmar. Las flechas, Escape, Tab, las teclas modificadoras solas y los atajos mantienen su comportamiento habitual. Los cambios se aplican a páginas e iframes abiertos. Desactivarlo restaura el aspecto original." },
+  "pickerUnavailable": { "message": "Este navegador no admite esta configuración. Se utiliza la lista original del selector." },
+  "searchQueryLabel": { "message": "Buscar opciones" },
   "noSuggestions": { "message": "No hay opciones coincidentes" },
   "emptyOptionLabel": { "message": "(Vacío)" }
 }

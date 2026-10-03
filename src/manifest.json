@@ -28,11 +28,13 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
+      "css": ["content/picker.css"],
       "js": [
         "shared.js",
         "i18n.js",
         "content/suggestion-view.js",
         "content/focus-navigation.js",
+        "content/picker-controller.js",
         "content/select-session.js",
         "content/feature-runtime.js",
         "content/activation-controller.js",

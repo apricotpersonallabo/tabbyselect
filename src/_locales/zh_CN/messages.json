@@ -25,6 +25,8 @@
   "toggleSaved": { "message": "已保存开关设置。" },
   "optionsOpenError": { "message": "无法打开设置页面。" },
   "optionsDocumentTitle": { "message": "TabbySelect 设置" },
+  "optionsAboutExtension": { "message": "关于此扩展" },
+  "supportSite": { "message": "支持网站" },
   "settingsSectionTitle": { "message": "设置" },
   "urlSettingsTitle": { "message": "启用 URL 设置" },
   "urlDescription": { "message": "仅在匹配以下模式的页面上启用扩展程序。每行输入一个模式；* 可匹配任意文本。留空则在所有 URL 上启用扩展程序。" },
@@ -49,6 +51,11 @@
   "settingsLoaded": { "message": "已加载当前设置。" },
   "settingsSaveError": { "message": "无法保存设置。" },
   "settingsSaved": { "message": "已保存设置。" },
+  "suggestionSettingsTitle": { "message": "候选列表显示" },
+  "switchFromPickerOnKeydown": { "message": "在已打开的选择列表中按键时切换到候选列表" },
+  "pickerTriggerDescription": { "message": "默认关闭。在支持的浏览器中，选择框及其列表使用可自定义的呈现方式，因此外观会改变。在列表打开时按键会关闭列表并打开搜索框。保留首个输入字符，选择值仅在确认时改变。方向键、Esc、Tab、单独按下修饰键和快捷键保持正常操作。更改应用于已打开的页面和 iframe，关闭此设置可恢复原来的外观。" },
+  "pickerUnavailable": { "message": "此浏览器不支持此设置。使用原来的选择列表。" },
+  "searchQueryLabel": { "message": "搜索选项" },
   "noSuggestions": { "message": "没有匹配的选项" },
   "emptyOptionLabel": { "message": "（空白）" }
 }

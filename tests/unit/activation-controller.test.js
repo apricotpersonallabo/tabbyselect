@@ -99,6 +99,20 @@ test("propagates the search mode during initialization and later changes", () =>
   assert.equal(states.at(-1).active, true);
 });
 
+test("ignores obsolete key trigger changes without changing activation", () => {
+  const { controller, chromeApi, storageCallbacks, urlCallbacks, states } = setup();
+  controller.start();
+  storageCallbacks[0]({ ...core.DEFAULT_SETTINGS, showSuggestionsOnKeydown: false });
+  urlCallbacks[0]({ url: "https://parent.example/" });
+  assert.equal(states.at(-1).active, true);
+  assert.equal(Object.hasOwn(states.at(-1).settings, "showSuggestionsOnKeydown"), false);
+  const stateCount = states.length;
+  for (const newValue of [true, false, undefined]) {
+    chromeApi.storage.onChanged.fire({ showSuggestionsOnKeydown: { newValue } }, "local");
+    assert.equal(states.length, stateCount);
+  }
+});
+
 for (const response of [undefined, { url: null }, { url: 123 }, { url: "about:blank" }]) {
   test(`stays disabled with an unavailable or unsupported top URL: ${JSON.stringify(response)}`, () => {
     const { controller, storageCallbacks, urlCallbacks, states } = setup();

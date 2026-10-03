@@ -4,10 +4,11 @@
   const namespace =
     globalThis.TabbySelectContent || (globalThis.TabbySelectContent = {});
 
-  namespace.createSuggestionView = function createSuggestionView() {
+  namespace.createSuggestionView = function createSuggestionView({ queryLabel }) {
     let host = null;
     let root = null;
-    let queryContent = null;
+    let queryInput = null;
+    let inputHandlers = {};
     let list = null;
     let copyrightLine = null;
 
@@ -34,11 +35,6 @@
           all: initial !important;
         }
 
-        @keyframes tabby-select-caret-blink {
-          0%, 49% { opacity: 1; }
-          50%, 100% { opacity: 0; }
-        }
-
         .root {
           position: fixed;
           z-index: 2147483647;
@@ -53,20 +49,27 @@
           color: #1f2937;
           font: 12px "Segoe UI", sans-serif;
           pointer-events: none;
+          overflow-y: auto;
         }
 
         .query {
-          min-height: 18px;
+          box-sizing: border-box;
+          width: 100%;
+          min-height: 32px;
           margin-bottom: 6px;
           padding: 6px 8px;
+          border: 1px solid transparent;
           border-radius: 4px;
           background: #e5e7eb;
+          color: inherit;
+          font: inherit;
           font-weight: 600;
+          pointer-events: auto;
         }
 
-        .caret {
-          margin-left: 2px;
-          animation: tabby-select-caret-blink 1s infinite;
+        .query:focus {
+          outline: 2px solid #2563eb;
+          outline-offset: -2px;
         }
 
         .list {
@@ -109,22 +112,39 @@
       root.className = "root";
       root.hidden = true;
 
-      const queryLine = document.createElement("div");
-      queryLine.className = "query";
-      queryContent = document.createElement("span");
-      const caret = document.createElement("span");
-      caret.className = "caret";
-      caret.textContent = "│";
-      queryLine.append(queryContent, caret);
+      queryInput = document.createElement("input");
+      queryInput.type = "text";
+      queryInput.className = "query";
+      queryInput.tabIndex = -1;
+      queryInput.autocomplete = "off";
+      queryInput.spellcheck = false;
+      queryInput.setAttribute("aria-label", queryLabel);
+      queryInput.setAttribute("role", "combobox");
+      queryInput.setAttribute("aria-autocomplete", "list");
+      queryInput.setAttribute("aria-controls", "tabby-select-options");
+      for (const [type, handler] of [
+        ["input", "onInput"],
+        ["compositionstart", "onCompositionStart"],
+        ["compositionend", "onCompositionEnd"]
+      ]) {
+        queryInput.addEventListener(type, (event) => {
+          event.stopPropagation();
+          if (event.target !== queryInput) {
+            return;
+          }
+          inputHandlers[handler]?.(event);
+        });
+      }
 
       list = document.createElement("ul");
       list.className = "list";
+      list.id = "tabby-select-options";
       list.setAttribute("role", "listbox");
 
       copyrightLine = document.createElement("div");
       copyrightLine.className = "copyright";
 
-      root.append(queryLine, list, copyrightLine);
+      root.append(queryInput, list, copyrightLine);
       shadow.append(style, root);
       document.documentElement.appendChild(host);
     }
@@ -143,6 +163,7 @@
 
       root.style.minWidth = `${minWidth}px`;
       root.style.maxWidth = `${maxWidth}px`;
+      root.style.maxHeight = "";
       list.style.maxHeight = `${Math.max(
         48,
         Math.min(320, Math.floor(window.innerHeight * 0.5))
@@ -163,6 +184,8 @@
         48,
         Math.min(320, Math.floor(verticalSpace - nonListHeight))
       )}px`;
+      // Keep the search field off its select even in short iframe viewports.
+      root.style.maxHeight = `${verticalSpace}px`;
 
       const rootRect = root.getBoundingClientRect();
       const desiredTop = placeAbove
@@ -204,11 +227,16 @@
       query,
       suggestions,
       pendingIndex,
+      composing,
       copyright,
       emptyMessage
     }) {
       ensureCreated();
-      queryContent.textContent = query;
+      if (!composing && queryInput.value !== query) {
+        queryInput.value = query;
+      }
+      queryInput.setAttribute("aria-expanded", "true");
+      queryInput.removeAttribute("aria-activedescendant");
       copyrightLine.textContent = copyright;
       list.textContent = "";
       let pendingItem = null;
@@ -223,11 +251,13 @@
           const item = document.createElement("li");
           item.className = "item";
           item.textContent = suggestion.text;
+          item.id = `tabby-select-option-${suggestion.index}`;
           item.setAttribute("role", "option");
           if (suggestion.index === pendingIndex && pendingIndex >= 0) {
             item.classList.add("pending");
             item.setAttribute("aria-selected", "true");
             pendingItem = item;
+            queryInput.setAttribute("aria-activedescendant", item.id);
           }
           list.appendChild(item);
         }
@@ -241,6 +271,7 @@
     function hide() {
       if (root) {
         root.hidden = true;
+        queryInput.setAttribute("aria-expanded", "false");
       }
     }
 
@@ -250,7 +281,7 @@
       }
       host = null;
       root = null;
-      queryContent = null;
+      queryInput = null;
       list = null;
       copyrightLine = null;
     }
@@ -259,6 +290,29 @@
       return Boolean(root && !root.hidden);
     }
 
-    return Object.freeze({ show, hide, destroy, reposition, isVisible });
+    function focusQuery() {
+      if (isVisible()) {
+        queryInput.focus({ preventScroll: true });
+      }
+    }
+
+    function hasQueryFocus() {
+      return Boolean(queryInput && host.shadowRoot.activeElement === queryInput);
+    }
+
+    function isQueryEvent(event) {
+      return Boolean(queryInput && event.composedPath().includes(queryInput));
+    }
+
+    function containsFocusTarget(target) {
+      return Boolean(host && (target === host || target === queryInput));
+    }
+
+    function setInputHandlers(handlers) {
+      inputHandlers = handlers;
+    }
+
+    return Object.freeze({ show, hide, destroy, reposition, isVisible,
+      focusQuery, hasQueryFocus, isQueryEvent, containsFocusTarget, setInputHandlers });
   };
 })();
