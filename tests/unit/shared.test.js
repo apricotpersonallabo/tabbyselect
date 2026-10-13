@@ -14,7 +14,7 @@ test("normalizes settings with stable defaults", () => {
       debugLogEnabled: true,
       urlAllowPatterns: "",
       manualEnabledOverride: false,
-      searchMode: "prefix",
+      searchMode: "contains",
       switchFromPickerOnKeydown: false
     }
   );
@@ -38,9 +38,9 @@ test("ignores obsolete key trigger settings", () => {
   }
 });
 
-test("defaults missing and invalid search modes to prefix", () => {
+test("defaults missing and invalid search modes to contains", () => {
   for (const searchMode of [undefined, null, "", "suffix", "CONTAINS", 1, true]) {
-    assert.equal(core.normalizeSettings({ searchMode }).searchMode, "prefix");
+    assert.equal(core.normalizeSettings({ searchMode }).searchMode, "contains");
   }
   assert.equal(core.normalizeSettings({ searchMode: "prefix" }).searchMode, "prefix");
   assert.equal(core.normalizeSettings({ searchMode: "contains" }).searchMode, "contains");
@@ -61,8 +61,8 @@ test("matches prefix and contains queries with the same case and whitespace rule
     ["Japan", "  ", "contains", true],
     ["New Japan", "Japan", "contains", true],
     ["New Japan", "Japan", "prefix", false],
-    ["Japan", "pan", "invalid", false],
-    ["Japan", "pan", undefined, false]
+    ["Japan", "pan", "invalid", true],
+    ["Japan", "pan", undefined, true]
   ]) {
     assert.equal(core.matchesSearchText(text, query, mode), expected,
       JSON.stringify({ text, query, mode }));

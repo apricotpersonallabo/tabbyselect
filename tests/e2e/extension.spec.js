@@ -270,8 +270,29 @@ test.afterAll(async () => {
   }
 });
 
+test("uses contains matching when the search mode has not been saved", async () => {
+  expect(await worker.evaluate(() => chrome.storage.local.get("searchMode"))).toEqual({});
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator("#searchModeContains")).toBeEnabled();
+  await expect(options.locator("#searchModeContains")).toBeChecked();
+  await expect(options.locator("#searchModePrefix")).not.toBeChecked();
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  await page.locator("#searchBefore").click();
+  await page.locator("#searchSelect").focus();
+  await openFocusedSelectSearch(page);
+  await page.keyboard.type("pan");
+  await expect(page.locator("[data-tabby-select-host] .item"))
+    .toHaveText(["Japan", "Panama", "Japanese", "New Japan"]);
+  expect(await worker.evaluate(() => chrome.storage.local.get("searchMode"))).toEqual({});
+  await page.close();
+  await options.close();
+});
+
 test("supports keyboard selection in all frame types using the top URL", async () => {
   await setSettings({
+    searchMode: "prefix",
     urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
     manualEnabledOverride: true
   });
@@ -500,6 +521,21 @@ test("runs the installed extension in the support site playground", async () => 
   await page.close();
 });
 
+test("describes open-list switching as a preview in both manual languages", async () => {
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/support/manual.html`);
+  await expect(page.locator('[data-i18n="setupPickerTitle"]')).toHaveText("Suggestion display (Preview)");
+  await expect(page.locator('[data-i18n="setupPickerText"]'))
+    .toContainText("This is an experimental feature provided as a preview.");
+  await page.getByRole("button", { name: "Switch to Japanese" }).click();
+  await expect(page.locator('[data-i18n="setupPickerTitle"]')).toHaveText("候補UIの表示（プレビュー）");
+  await expect(page.locator('[data-i18n="setupPickerText"]'))
+    .toContainText("プレビューとして提供する実験的機能です。");
+  await page.getByRole("button", { name: "英語に切り替える" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await page.close();
+});
+
 test("publishes the privacy policy in Japanese and English", async () => {
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/support/privacy.html`);
@@ -711,28 +747,28 @@ test("saves and reloads the search mode without overwriting other settings", asy
   await worker.evaluate(() => chrome.storage.local.remove("searchMode"));
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
-  await expect(options.locator("#searchModePrefix")).toBeEnabled();
-  await expect(options.locator("#searchModePrefix")).toBeChecked();
-  await expect(options.locator("#searchModeContains")).not.toBeChecked();
+  await expect(options.locator("#searchModeContains")).toBeEnabled();
+  await expect(options.locator("#searchModeContains")).toBeChecked();
+  await expect(options.locator("#searchModePrefix")).not.toBeChecked();
   await expect(options.locator("#search-settings-title")).toHaveText("Search mode");
   // Change another control without submitting it; mode saving must not copy that value.
   await options.locator("#urlAllowPatterns").evaluate((input) => { input.value = "unsaved"; });
-  await options.locator("#searchModeContains").check();
+  await options.locator("#searchModePrefix").check();
   await expect(options.locator("#status")).toHaveText("Settings saved.");
   expect(await worker.evaluate(() => chrome.storage.local.get(["searchMode", "urlAllowPatterns"])))
-    .toEqual({ searchMode: "contains", urlAllowPatterns: allowedPattern });
+    .toEqual({ searchMode: "prefix", urlAllowPatterns: allowedPattern });
   await options.reload();
-  await expect(options.locator("#searchModeContains")).toBeEnabled();
-  await expect(options.locator("#searchModeContains")).toBeChecked();
-  await options.locator("#searchModePrefix").evaluate((input) => { input.checked = true; });
+  await expect(options.locator("#searchModePrefix")).toBeEnabled();
+  await expect(options.locator("#searchModePrefix")).toBeChecked();
+  await options.locator("#searchModeContains").evaluate((input) => { input.checked = true; });
   await options.locator("#urlAllowPatterns").fill(`${allowedPattern}\nhttps://example.com/*`);
   await options.locator("#search-settings-title").click();
   await expect.poll(() => worker.evaluate(() => chrome.storage.local.get("urlAllowPatterns")))
     .toEqual({ urlAllowPatterns: `${allowedPattern}\nhttps://example.com/*` });
   expect(await worker.evaluate(() => chrome.storage.local.get("searchMode")))
-    .toEqual({ searchMode: "contains" });
+    .toEqual({ searchMode: "prefix" });
   await options.reload();
-  await expect(options.locator("#searchModeContains")).toBeChecked();
+  await expect(options.locator("#searchModePrefix")).toBeChecked();
   await options.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-search-options.png"), fullPage: true });
   await options.close();
 });
@@ -1328,6 +1364,9 @@ test("saves the open-list switch independently and reports missing browser suppo
   await worker.evaluate(() => chrome.storage.local.remove("switchFromPickerOnKeydown"));
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator("#suggestion-settings-title")).toHaveText("Suggestion display (Preview)");
+  await expect(options.locator("#picker-trigger-description"))
+    .toContainText("This is an experimental feature provided as a preview.");
   const trigger = options.locator("#switchFromPickerOnKeydown");
   await expect(trigger).toBeEnabled();
   await expect(trigger).not.toBeChecked();

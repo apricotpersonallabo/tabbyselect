@@ -20,7 +20,7 @@
     debugLogEnabled: false,
     urlAllowPatterns: "",
     manualEnabledOverride: true,
-    searchMode: "prefix",
+    searchMode: "contains",
     switchFromPickerOnKeydown: false
   });
   const DEFAULT_METADATA = Object.freeze({
@@ -31,7 +31,7 @@
   const GET_TOP_URL_MESSAGE_TYPE = "tabby-select:get-top-url";
 
   function normalizeSearchMode(value) {
-    return value === "contains" ? "contains" : "prefix";
+    return value === "prefix" ? "prefix" : DEFAULT_SETTINGS.searchMode;
   }
 
   function supportsBaseSelect(cssApi = globalThis.CSS) {

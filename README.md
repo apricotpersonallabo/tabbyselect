@@ -71,11 +71,11 @@ If only one store fails, rerun the workflow for that store with the same version
 
 ## User manual
 
-In the settings page, choose **Prefix match** (default) or **Contains match**. For example, `Ja` matches `Japan` in prefix mode, while `pan` matches it in contains mode. Both modes ignore case and trim leading and trailing whitespace. Changes are saved automatically and apply to open pages and their iframes.
+In the settings page, choose **Prefix match** or **Contains match** (default). For example, `Ja` matches `Japan` in prefix mode, while `pan` matches it in contains mode. Both modes ignore case and trim leading and trailing whitespace. Changes are saved automatically and apply to open pages and their iframes.
 
 Focusing a select waits for a key before opening the search field, including after mouse interaction. This behavior is always enabled and has no setting to turn it off. Arrow keys, Escape, Tab, modifier keys alone, and shortcuts keep their normal behavior while the select is focused. The browser handles key presses while its native dropdown is open.
 
-A separate **Switch an open select list to suggestions on a key press** setting uses `appearance: base-select` on supported browsers. It is off by default and changes the select and list appearance. When the list is open, a key closes it and opens search with the first character preserved; the value changes only on confirmation. Arrow keys, Escape, Tab, modifier keys alone, and shortcuts keep their normal behavior while the select is focused. Turning the setting off restores the original rendering. The setting is unavailable on browsers that lack support.
+**Suggestion display (Preview)** is an experimental feature provided as a preview. Its **Switch an open select list to suggestions on a key press** setting uses `appearance: base-select` on supported browsers. It is off by default and changes the select and list appearance. When the list is open, a key closes it and opens search with the first character preserved; the value changes only on confirmation. Arrow keys, Escape, Tab, modifier keys alone, and shortcuts keep their normal behavior while the select is focused. Turning the setting off restores the original rendering. The setting is unavailable on browsers that lack support.
 
 Single-selection selects support the same search behavior regardless of their `size` attribute. While open-list switching is enabled, selects temporarily use `size="1"` so every list can open the same picker. Turning the setting off restores the original attribute, including size changes made by the page while the setting was enabled.
 

@@ -34,24 +34,24 @@ https://*.example.org/forms/*"></textarea>
         <p id="search-description" class="description" data-i18n="searchDescription">Choose how option text is matched. Changes are saved automatically and apply to open pages.</p>
         <div class="search-modes" role="radiogroup" aria-labelledby="search-settings-title" aria-describedby="search-description">
           <label class="search-mode" for="searchModePrefix">
-            <input id="searchModePrefix" name="searchMode" type="radio" value="prefix" checked disabled />
+            <input id="searchModePrefix" name="searchMode" type="radio" value="prefix" disabled />
             <span><span data-i18n="searchModePrefix">Prefix match</span><small data-i18n="searchModePrefixDescription">Matches the beginning of the option text. Example: Ja matches Japan.</small></span>
           </label>
           <label class="search-mode" for="searchModeContains">
-            <input id="searchModeContains" name="searchMode" type="radio" value="contains" disabled />
-            <span><span data-i18n="searchModeContains">Contains match</span><small data-i18n="searchModeContainsDescription">Matches anywhere in the option text. Example: pan matches Japan.</small></span>
+            <input id="searchModeContains" name="searchMode" type="radio" value="contains" checked disabled />
+            <span><span data-i18n="searchModeContains">Contains match (default)</span><small data-i18n="searchModeContainsDescription">Matches anywhere in the option text. Example: pan matches Japan.</small></span>
           </label>
         </div>
         <p class="description" data-i18n="searchCaseDescription">Both modes ignore uppercase and lowercase differences.</p>
       </section>
 
       <section class="section" aria-labelledby="suggestion-settings-title">
-        <h3 id="suggestion-settings-title" class="section-title" data-i18n="suggestionSettingsTitle">Suggestion display</h3>
+        <h3 id="suggestion-settings-title" class="section-title" data-i18n="suggestionSettingsTitle">Suggestion display (Preview)</h3>
         <label class="search-mode" for="switchFromPickerOnKeydown">
           <input id="switchFromPickerOnKeydown" type="checkbox" aria-describedby="picker-trigger-description picker-unavailable" disabled />
           <span data-i18n="switchFromPickerOnKeydown">Switch an open select list to suggestions on a key press</span>
         </label>
-        <p id="picker-trigger-description" class="description" data-i18n="pickerTriggerDescription">Off by default. On supported browsers, enabling this changes the appearance of selects and their lists. A key press while the list is open closes it and opens the search field. The first character is preserved; the value changes only when confirmed. Arrow keys, Escape, Tab, modifier keys alone, and shortcuts keep their normal behavior. Changes apply to open pages and iframes. Turning this off restores the original appearance.</p>
+        <p id="picker-trigger-description" class="description" data-i18n="pickerTriggerDescription">This is an experimental feature provided as a preview. Off by default. On supported browsers, enabling this changes the appearance of selects and their lists. A key press while the list is open closes it and opens the search field. The first character is preserved; the value changes only when confirmed. Arrow keys, Escape, Tab, modifier keys alone, and shortcuts keep their normal behavior. Changes apply to open pages and iframes. Turning this off restores the original appearance.</p>
         <p id="picker-unavailable" class="description" data-i18n="pickerUnavailable" hidden>This browser does not support this setting. The original select list is used.</p>
       </section>
 
