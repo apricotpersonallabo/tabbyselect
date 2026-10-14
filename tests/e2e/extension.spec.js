@@ -1210,6 +1210,8 @@ test("supports Japanese IME composition inside all supported frame types", async
   await page.close();
 });
 
+const selectSizeAttributes = [null, "", "0", "1", "2", "5", "100", "-1", "invalid", "4294967295"];
+
 test("searches and confirms single selects independently of their size", async () => {
   await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
   const page = await context.newPage();
