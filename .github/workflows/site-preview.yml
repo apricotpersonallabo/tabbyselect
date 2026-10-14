@@ -1,4 +1,4 @@
-name: Site preview
+name: Site preview (migration)
 
 on:
   pull_request:
@@ -8,15 +8,11 @@ on:
       - "README.md"
       - "AGENTS.md"
       - ".github/workflows/site-preview.yml"
-      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
   preview:
-    uses: apricotpersonallabo/site-platform/.github/workflows/site-preview.yml@503eb3c738c93f1df9feda2115f75833e53e33de
+    uses: apricotpersonallabo/site-platform/.github/workflows/site-preview.yml@fea5c9ea87f67cd4d666ed4fdade25f9dcff9759
     with:
       site-directory: site
       artifact-name: tabbyselect-site-preview
