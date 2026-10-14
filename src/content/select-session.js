@@ -31,6 +31,7 @@
     let showSuggestionsOnMouseFocus = true;
     let mousePointerSelect = null;
     let lastTouchPointerTime = -Infinity;
+    let pointerEndTimer = null;
     const navigationKeys = new Set([
       "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape",
       "Up", "Down", "Left", "Right", "Esc"
@@ -303,7 +304,17 @@
     }
 
     function pointerTargetSelect(target) {
-      return target instanceof Element ? target.closest("select") : null;
+      if (!(target instanceof Element)) {
+        return null;
+      }
+      const directSelect = target.closest("select");
+      if (directSelect) {
+        return directSelect;
+      }
+      // A label's default click can focus its associated select after pointerup.
+      const label = target.closest("label");
+      return label instanceof HTMLLabelElement &&
+        label.control instanceof HTMLSelectElement ? label.control : null;
     }
 
     function showFromPointer(event, select) {
@@ -321,7 +332,12 @@
 
     function handlePointerDown(event) {
       const select = pointerTargetSelect(event.target);
+      if (pointerEndTimer !== null) {
+        clearTimeout(pointerEndTimer);
+        pointerEndTimer = null;
+      }
       if (!select || (event.pointerType === "mouse" && event.button !== 0)) {
+        mousePointerSelect = null;
         return;
       }
       if (event.pointerType !== "mouse") {
@@ -356,7 +372,15 @@
     }
 
     function handlePointerEnd() {
-      mousePointerSelect = null;
+      // Keep mouse intent through click's default label focus action.
+      // Clearing synchronously on pointerup misclassifies that focus.
+      if (pointerEndTimer !== null) {
+        clearTimeout(pointerEndTimer);
+      }
+      pointerEndTimer = setTimeout(() => {
+        pointerEndTimer = null;
+        mousePointerSelect = null;
+      }, 0);
     }
 
     function handleClick(event) {
@@ -556,6 +580,11 @@
     }
 
     function destroy() {
+      if (pointerEndTimer !== null) {
+        clearTimeout(pointerEndTimer);
+        pointerEndTimer = null;
+      }
+      mousePointerSelect = null;
       if (activeSelect) {
         close(activeSelect, { restoreFocus: true });
       } else {
