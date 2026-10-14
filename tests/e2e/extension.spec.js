@@ -350,6 +350,69 @@ test("keeps programmatic and touch focus independent of mouse preference", async
   await page.close();
 });
 
+test("does not reopen on option, setting, or window events alone", async () => {
+  await setSettings({ showSuggestionsOnMouseFocus: true, searchMode: "prefix",
+    manualEnabledOverride: true, urlAllowPatterns: "" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const root = page.locator("[data-tabby-select-host] .root");
+  await select.focus();
+  await expect(root).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(root).toBeHidden();
+  await select.evaluate((el) => el.add(new Option("Jamaica")));
+  await setSettings({ searchMode: "contains" });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(root).toBeHidden();
+  await page.keyboard.press("ArrowDown");
+  await expect(root).toBeHidden();
+  await page.keyboard.press("j");
+  await expect(page.locator("[data-tabby-select-host] .query")).toHaveValue("j");
+  await expect(page.locator("[data-tabby-select-host] .item"))
+    .toContainText(["Japan", "Japanese", "New Japan", "Jamaica"]);
+  await page.close();
+});
+
+test("honors mouse toggle for clicks on labels associated with selects", async () => {
+  await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
+    urlAllowPatterns: "" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  await page.evaluate(() => {
+    const label = document.createElement("label");
+    label.htmlFor = "searchSelect";
+    label.id = "searchLabel";
+    label.textContent = "Choose value";
+    document.querySelector("#searchSelect").before(label);
+  });
+  const root = page.locator("[data-tabby-select-host] .root");
+  await page.locator("#searchLabel").click();
+  await expect(root).toBeHidden();
+  await setSettings({ showSuggestionsOnMouseFocus: true });
+  await page.locator("#searchLabel").click();
+  await expect(root).toBeVisible();
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await page.close();
+});
+
+test("defaults unsaved mouse preference to enabled in settings UI", async () => {
+  await worker.evaluate(() => chrome.storage.local.remove("showSuggestionsOnMouseFocus"));
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/options.html`);
+  const checkbox = page.locator("#showSuggestionsOnMouseFocus");
+  await expect(checkbox).toBeChecked();
+  await checkbox.uncheck();
+  await expect.poll(() => worker.evaluate(() => chrome.storage.local.get("showSuggestionsOnMouseFocus")))
+    .toEqual({ showSuggestionsOnMouseFocus: false });
+  await page.reload();
+  await expect(checkbox).not.toBeChecked();
+  await checkbox.check();
+  await expect.poll(() => worker.evaluate(() => chrome.storage.local.get("showSuggestionsOnMouseFocus")))
+    .toEqual({ showSuggestionsOnMouseFocus: true });
+  await page.close();
+});
+
 test("uses contains matching when the search mode has not been saved", async () => {
   await worker.evaluate(() => chrome.storage.local.remove("searchMode"));
   await setSettings({ showSuggestionsOnMouseFocus: false });
