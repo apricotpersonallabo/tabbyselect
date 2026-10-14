@@ -15,10 +15,17 @@
     let currentUrl = null;
     let lifecycle = 0;
     let urlRevision = 0;
+    let urlLoaded = false;
+    let initialReadyEmitted = false;
     let pendingSettings = {};
 
     function emit() {
+      const initialReady = !initialReadyEmitted && settingsLoaded && urlLoaded;
+      if (initialReady) {
+        initialReadyEmitted = true;
+      }
       onStateChange({
+        initialReady,
         active: settingsLoaded && core.isEnabledForUrl(currentUrl, settings),
         settings,
         url: currentUrl
@@ -54,6 +61,7 @@
       }
       urlRevision += 1;
       currentUrl = typeof message.url === "string" ? message.url : null;
+      urlLoaded = true;
       emit();
     }
 
@@ -65,6 +73,8 @@
       const currentLifecycle = ++lifecycle;
       const initialUrlRevision = urlRevision;
       settingsLoaded = false;
+      urlLoaded = false;
+      initialReadyEmitted = false;
       settings = core.normalizeSettings(core.DEFAULT_SETTINGS);
       pendingSettings = {};
       currentUrl = null;
@@ -92,6 +102,7 @@
         currentUrl = !failed && response && typeof response.url === "string"
           ? response.url
           : null;
+        urlLoaded = true;
         emit();
       });
     }

@@ -73,6 +73,7 @@
         }
 
         .list {
+          pointer-events: auto;
           max-height: 320px;
           margin: 0;
           padding: 2px 0;
@@ -83,6 +84,7 @@
         }
 
         .item {
+          cursor: pointer;
           padding: 3px 8px;
           line-height: 1.3;
         }
@@ -253,6 +255,11 @@
           item.textContent = suggestion.text;
           item.id = `tabby-select-option-${suggestion.index}`;
           item.setAttribute("role", "option");
+          item.addEventListener("mousedown", (event) => event.preventDefault());
+          item.addEventListener("click", (event) => {
+            event.stopPropagation();
+            inputHandlers.onSuggestionClick?.(suggestion.index);
+          });
           if (suggestion.index === pendingIndex && pendingIndex >= 0) {
             item.classList.add("pending");
             item.setAttribute("aria-selected", "true");

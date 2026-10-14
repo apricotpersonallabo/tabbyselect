@@ -15,7 +15,7 @@
     let eventAbortController = null;
     let metadataPromise = null;
 
-    function enable() {
+    function enable({ checkInitialFocus = false } = {}) {
       if (enabled) {
         return;
       }
@@ -24,17 +24,24 @@
       const signal = eventAbortController.signal;
       pickerController.start();
 
-      document.addEventListener(
-        "mousedown",
-        (event) => {
-          // Listbox clicks target an option rather than the select itself.
-          const select = event.target instanceof Element ? event.target.closest("select") : null;
-          if (select instanceof HTMLSelectElement) {
-            session.suppressForMouseDown(select);
-          }
-        },
-        { capture: true, signal }
-      );
+      document.addEventListener("pointerdown", (event) => session.handlePointerDown(event), {
+        capture: true, signal
+      });
+      document.addEventListener("mousedown", (event) => session.handleMouseDown(event), {
+        capture: true, signal
+      });
+      document.addEventListener("pointerup", () => session.handlePointerEnd(), {
+        capture: true, signal
+      });
+      document.addEventListener("pointercancel", () => session.handlePointerEnd(), {
+        capture: true, signal
+      });
+      document.addEventListener("mouseup", () => session.handlePointerEnd(), {
+        capture: true, signal
+      });
+      document.addEventListener("click", (event) => session.handleClick(event), {
+        capture: true, signal
+      });
       document.addEventListener(
         "focusin",
         (event) => {
@@ -77,6 +84,12 @@
           session.setCopyright(metadata.copyright);
         }
       });
+      // Native autofocus may have run before document_idle content scripts
+      // and before the top URL / settings callbacks completed.
+      if (checkInitialFocus && document.hasFocus() &&
+          document.activeElement instanceof HTMLSelectElement) {
+        session.activate(document.activeElement, { fromKeydown: true });
+      }
       debugLog("feature runtime enabled");
     }
 

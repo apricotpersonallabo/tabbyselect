@@ -15,20 +15,26 @@ test("normalizes settings with stable defaults", () => {
       urlAllowPatterns: "",
       manualEnabledOverride: false,
       searchMode: "contains",
-      switchFromPickerOnKeydown: false
+      showSuggestionsOnMouseFocus: true
     }
   );
 });
 
-test("defaults invalid picker settings to off and detects missing browser support", () => {
-  for (const switchFromPickerOnKeydown of [undefined, null, false, "true", 1]) {
-    assert.equal(core.normalizeSettings({ switchFromPickerOnKeydown }).switchFromPickerOnKeydown, false);
+test("enables mouse focus by default and preserves explicit off", () => {
+  for (const value of [undefined, null, true, 1, 0, "false", "true"]) {
+    assert.equal(core.normalizeSettings({ showSuggestionsOnMouseFocus: value })
+      .showSuggestionsOnMouseFocus, true);
   }
-  assert.equal(core.normalizeSettings({ switchFromPickerOnKeydown: true }).switchFromPickerOnKeydown, true);
-  assert.equal(core.supportsBaseSelect(null), false);
-  assert.equal(core.supportsBaseSelect({}), false);
-  assert.equal(core.supportsBaseSelect({ supports: () => false }), false);
-  assert.equal(core.supportsBaseSelect({ supports: () => true }), true);
+  assert.equal(core.normalizeSettings({ showSuggestionsOnMouseFocus: false })
+    .showSuggestionsOnMouseFocus, false);
+  assert.equal(core.STORAGE_KEYS.showSuggestionsOnMouseFocus, "showSuggestionsOnMouseFocus");
+});
+
+test("ignores obsolete picker setting", () => {
+  assert.equal(Object.hasOwn(core.STORAGE_KEYS, "switchFromPickerOnKeydown"), false);
+  for (const switchFromPickerOnKeydown of [undefined, true, false, "true"]) {
+    assert.deepEqual(core.normalizeSettings({ switchFromPickerOnKeydown }), core.DEFAULT_SETTINGS);
+  }
 });
 
 test("ignores obsolete key trigger settings", () => {
