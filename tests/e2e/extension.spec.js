@@ -1162,8 +1162,8 @@ test("searches and confirms single selects independently of their size", async (
     }, size);
     await page.locator("#searchBefore").focus();
     await page.keyboard.press("Tab");
-    await expect(select).toBeFocused();
-    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await expect(input).toBeFocused();
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeVisible();
     await page.keyboard.press("p");
     await expect(input).toBeFocused();
     await expect(input).toHaveValue("p");
