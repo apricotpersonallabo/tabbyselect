@@ -30,6 +30,7 @@
     let returningFocus = false;
     let showSuggestionsOnMouseFocus = true;
     let mousePointerSelect = null;
+    let lastTouchPointerTime = -Infinity;
     const navigationKeys = new Set([
       "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape",
       "Up", "Down", "Left", "Right", "Esc"
@@ -323,6 +324,9 @@
       if (!select || (event.pointerType === "mouse" && event.button !== 0)) {
         return;
       }
+      if (event.pointerType !== "mouse") {
+        lastTouchPointerTime = performance.now();
+      }
       mousePointerSelect = event.pointerType === "mouse" ? select : null;
       if (event.pointerType !== "mouse" || showSuggestionsOnMouseFocus) {
         showFromPointer(event, select);
@@ -333,6 +337,11 @@
     }
 
     function handleMouseDown(event) {
+      // Ignore compatibility mouse events synthesized after a touch.
+      if (event.sourceCapabilities?.firesTouchEvents ||
+          performance.now() - lastTouchPointerTime < 700) {
+        return;
+      }
       const select = pointerTargetSelect(event.target);
       if (!select || event.button !== 0) {
         return;
@@ -503,6 +512,19 @@
 
     }
 
+    function handleSuggestionClick(index) {
+      if (!activeSelect || !view.isVisible()) {
+        return;
+      }
+      pendingIndex = index;
+      if (commitPendingSelection(activeSelect)) {
+        close(activeSelect, { restoreFocus: true });
+      } else {
+        updatePendingSelection();
+        render();
+      }
+    }
+
     function setShowSuggestionsOnMouseFocus(value) {
       showSuggestionsOnMouseFocus = value !== false;
     }
@@ -546,7 +568,8 @@
     view.setInputHandlers({
       onInput: handleInput,
       onCompositionStart: handleCompositionStart,
-      onCompositionEnd: handleCompositionEnd
+      onCompositionEnd: handleCompositionEnd,
+      onSuggestionClick: handleSuggestionClick
     });
 
     return Object.freeze({
