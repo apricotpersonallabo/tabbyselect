@@ -15,7 +15,7 @@
     let eventAbortController = null;
     let metadataPromise = null;
 
-    function enable() {
+    function enable({ checkInitialFocus = false } = {}) {
       if (enabled) {
         return;
       }
@@ -84,6 +84,12 @@
           session.setCopyright(metadata.copyright);
         }
       });
+      // Native autofocus may have run before document_idle content scripts
+      // and before the top URL / settings callbacks completed.
+      if (checkInitialFocus && document.hasFocus() &&
+          document.activeElement instanceof HTMLSelectElement) {
+        session.activate(document.activeElement, { fromKeydown: true });
+      }
       debugLog("feature runtime enabled");
     }
 
