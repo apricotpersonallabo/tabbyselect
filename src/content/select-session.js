@@ -28,6 +28,8 @@
     let searchMode = core.DEFAULT_SETTINGS.searchMode;
     let composing = false;
     let returningFocus = false;
+    let showSuggestionsOnMouseFocus = true;
+    let mousePointerSelect = null;
     const navigationKeys = new Set([
       "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape",
       "Up", "Down", "Left", "Right", "Esc"
@@ -214,7 +216,7 @@
       removalObserver.observe(document.documentElement, { childList: true, subtree: true });
     }
 
-    function activate(select, { fromKeydown = false } = {}) {
+    function activate(select, { fromKeydown = false, suppress = false } = {}) {
       if (!(select instanceof HTMLSelectElement) || select.disabled || select.multiple || select.options.length <= 1) {
         return;
       }
@@ -227,7 +229,7 @@
         query = "";
         pendingIndex = -1;
         composing = false;
-        suppressUiForCurrentFocus = !fromKeydown;
+        suppressUiForCurrentFocus = suppress;
         startObservers(select);
       }
 
@@ -249,7 +251,8 @@
         if (activeSelect === event.target) {
           close();
         }
-        activate(event.target);
+        const suppress = mousePointerSelect === event.target && !showSuggestionsOnMouseFocus;
+        activate(event.target, { suppress });
       }
     }
 
@@ -293,13 +296,66 @@
       handleInput(event);
     }
 
-    function suppressForMouseDown(select) {
-      if (!(select instanceof HTMLSelectElement)) {
+    function isEligible(select) {
+      return select instanceof HTMLSelectElement &&
+        !select.disabled && !select.multiple && select.options.length > 1;
+    }
+
+    function pointerTargetSelect(target) {
+      return target instanceof Element ? target.closest("select") : null;
+    }
+
+    function showFromPointer(event, select) {
+      if (!isEligible(select)) {
         return;
       }
-      if (activeSelect === select) {
+      // Cancel the native popup before focusing the select. Focusing opens our
+      // query, including when this select was already focused in WAITING state.
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+      select.focus({ preventScroll: true });
+      activate(select, { fromKeydown: true });
+    }
+
+    function handlePointerDown(event) {
+      const select = pointerTargetSelect(event.target);
+      if (!select || (event.pointerType === "mouse" && event.button !== 0)) {
+        return;
+      }
+      mousePointerSelect = event.pointerType === "mouse" ? select : null;
+      if (event.pointerType !== "mouse" || showSuggestionsOnMouseFocus) {
+        showFromPointer(event, select);
+      } else if (activeSelect === select) {
         suppressUiForCurrentFocus = true;
         view.hide();
+      }
+    }
+
+    function handleMouseDown(event) {
+      const select = pointerTargetSelect(event.target);
+      if (!select || event.button !== 0) {
+        return;
+      }
+      mousePointerSelect = select;
+      if (showSuggestionsOnMouseFocus) {
+        showFromPointer(event, select);
+      } else if (activeSelect === select) {
+        suppressUiForCurrentFocus = true;
+        view.hide();
+      }
+    }
+
+    function handlePointerEnd() {
+      mousePointerSelect = null;
+    }
+
+    function handleClick(event) {
+      // Cancel the click default too: some browsers open the native select
+      // picker on click rather than on pointerdown/mousedown.
+      if (showSuggestionsOnMouseFocus && event.detail > 0 &&
+          isEligible(pointerTargetSelect(event.target)) && event.cancelable) {
+        event.preventDefault();
       }
     }
 
@@ -447,6 +503,10 @@
 
     }
 
+    function setShowSuggestionsOnMouseFocus(value) {
+      showSuggestionsOnMouseFocus = value !== false;
+    }
+
     function setCopyright(value) {
       copyright = value;
       if (activeSelect) {
@@ -492,12 +552,16 @@
     return Object.freeze({
       activate,
       close,
-      suppressForMouseDown,
+      handlePointerDown,
+      handleMouseDown,
+      handlePointerEnd,
+      handleClick,
       handleKeydown,
       handleFocusin,
       handleFocusout,
       setCopyright,
       setSearchMode,
+      setShowSuggestionsOnMouseFocus,
       reposition,
       destroy
     });
