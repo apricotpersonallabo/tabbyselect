@@ -193,6 +193,12 @@ test.beforeAll(async () => {
       response.end(searchPageMarkup());
       return;
     }
+    if (pathname === "/allowed/autofocus") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end('<!doctype html><html><body><button id="before">Before</button>' +
+        '<select id="autoSelect" autofocus><option>A</option><option>B</option></select></body></html>');
+      return;
+    }
     if (pathname === "/allowed/ime") {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       response.end(unicodePageMarkup());
@@ -410,6 +416,54 @@ test("defaults unsaved mouse preference to enabled in settings UI", async () => 
   await checkbox.check();
   await expect.poll(() => worker.evaluate(() => chrome.storage.local.get("showSuggestionsOnMouseFocus")))
     .toEqual({ showSuggestionsOnMouseFocus: true });
+  await page.close();
+});
+
+test("opens for autofocus present before the extension initializes", async () => {
+  await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "",
+    showSuggestionsOnMouseFocus: false });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/autofocus`);
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await expect(page.locator("#autoSelect")).toHaveJSProperty("selectedIndex", 0);
+  await page.close();
+});
+
+test("enabling the extension alone does not reopen a focused select", async () => {
+  await setSettings({ manualEnabledOverride: false, urlAllowPatterns: "" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/autofocus`);
+  await expect(page.locator("#autoSelect")).toBeFocused();
+  await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
+  await setSettings({ manualEnabledOverride: true });
+  await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
+  await page.locator("#before").focus();
+  await page.locator("#autoSelect").focus();
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await page.close();
+});
+
+test("skips disabled, multiple, and one-option selects on focus", async () => {
+  await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/autofocus`);
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    document.querySelector("#autoSelect").blur();
+    for (const markup of [
+      '<select id="disabledSelect" disabled><option>A</option><option>B</option></select>',
+      '<select id="multipleSelect" multiple><option>A</option><option>B</option></select>',
+      '<select id="singleSelect"><option>A</option></select>'
+    ]) {
+      const host = document.createElement("div");
+      host.innerHTML = markup;
+      document.body.append(host.firstChild);
+    }
+  });
+  for (const id of ["disabledSelect", "multipleSelect", "singleSelect"]) {
+    await page.locator(`#${id}`).focus();
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  }
   await page.close();
 });
 
