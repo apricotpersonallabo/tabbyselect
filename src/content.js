@@ -62,7 +62,7 @@
     onStateChange({ active, settings, url }) {
       debugLogEnabled = settings.debugLogEnabled;
       session.setSearchMode(settings.searchMode);
-      pickerController.setEnabled(settings.switchFromPickerOnKeydown);
+      session.setShowSuggestionsOnMouseFocus(settings.showSuggestionsOnMouseFocus);
       session.reposition();
       if (active) {
         featureRuntime.enable();
