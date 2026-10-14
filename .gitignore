@@ -4,5 +4,3 @@ playwright-report/
 test-results/
 *.log
 .DS_Store
-site-dist/
-.site-platform-host/

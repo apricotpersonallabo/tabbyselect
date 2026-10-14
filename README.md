@@ -38,8 +38,7 @@ The release workflow reads the release version directly from `src/manifest.json`
 | `tests/unit/` | Unit and package tests |
 | `tests/e2e/` | Playwright extension tests |
 | `store-listing/` | Store metadata, icons, and screenshots |
-| `site/` | Production support site, localized manual and Playground |
-| `docs/` | Retained legacy site snapshot for rollback |
+| `docs/` | GitHub Pages support site and user manual |
 | `.github/workflows/` | CI, support-site deployment, and store submission workflows |
 
 ## Automated tests
@@ -86,4 +85,4 @@ Options are filtered using prefix or contains mode. No select value changes unti
 a candidate is confirmed. Mouse clicks on suggestion items also confirm selection.
 The former experimental base-select picker-switch setting is obsolete.
 
-The user manual and interactive playground are available at [apricotpersonallabo.github.io/tabbyselect/manual.html](https://apricotpersonallabo.github.io/tabbyselect/manual.html). The source is maintained in `site/content/ja/manual.html` and `site/content/en/manual.html`; the shared site-platform renders and validates it.
+The user manual and interactive playground are available at [apricotpersonallabo.github.io/tabbyselect/manual.html](https://apricotpersonallabo.github.io/tabbyselect/manual.html). The source is maintained in `docs/manual.html`.

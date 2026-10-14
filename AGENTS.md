@@ -1,14 +1,18 @@
 # Repository agent rules
 
-## GitHub Pages production state
+## GitHub Pages migration state
 
-GitHub Pagesの本番ソースは `site/` です。固定SHAの `apricotpersonallabo/site-platform` を使って生成・検証し、GitHub Actionsでデプロイします。
+現在のGitHub Pages本番ソースは `docs/` です。
 
-- 製品情報、日英翻訳、マニュアル、Playground、プライバシーは `site/` を更新する。
-- `docs/` は切替前のロールバック用の旧ソースとして保持する。編集・削除・生成物による上書きをしない。
-- `site/content/<locale>/*.html` は本文fragmentだけを持つ。共通shell・ナビゲーション・スタイルは共通基盤へ変更を入れる。
-- 共通基盤の参照SHAを変更する際は、previewと製品のサイト検証を通す。
-- 公開設定の変更やロールバックは明示されたタスクでのみ行う。
+`site/` は共通サイト基盤へ移行するための次期ソースであり、現時点では本番デプロイ元ではありません。
+
+製品変更が公開ドキュメントへ影響する場合:
+
+1. 実装とテストを確認してからドキュメントを変更する。
+2. 必要に応じて現在の本番ドキュメント `docs/` を更新する。
+3. `site/` にある対応する製品情報も意味的に同期する。
+4. `docs/` を削除、置換、生成物で上書きしない。
+5. 移行切替が明示されたタスク以外ではGitHub Pagesの公開元を変更しない。
 
 ## Responsibility boundary
 
