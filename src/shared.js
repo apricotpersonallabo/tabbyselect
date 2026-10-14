@@ -14,14 +14,14 @@
     urlAllowPatterns: "urlAllowPatterns",
     manualEnabledOverride: "manualEnabledOverride",
     searchMode: "searchMode",
-    switchFromPickerOnKeydown: "switchFromPickerOnKeydown"
+    showSuggestionsOnMouseFocus: "showSuggestionsOnMouseFocus"
   });
   const DEFAULT_SETTINGS = Object.freeze({
     debugLogEnabled: false,
     urlAllowPatterns: "",
     manualEnabledOverride: true,
     searchMode: "contains",
-    switchFromPickerOnKeydown: false
+    showSuggestionsOnMouseFocus: true
   });
   const DEFAULT_METADATA = Object.freeze({
     contactEmail: "Not configured",
@@ -61,7 +61,7 @@
           ? DEFAULT_SETTINGS.manualEnabledOverride
           : Boolean(input[STORAGE_KEYS.manualEnabledOverride]),
       searchMode: normalizeSearchMode(input[STORAGE_KEYS.searchMode]),
-      switchFromPickerOnKeydown: input[STORAGE_KEYS.switchFromPickerOnKeydown] === true
+      showSuggestionsOnMouseFocus: input[STORAGE_KEYS.showSuggestionsOnMouseFocus] !== false
     };
   }
 
