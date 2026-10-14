@@ -588,9 +588,8 @@ test("runs the installed extension in the support site playground", async () => 
   await page.keyboard.press("Enter");
 
   await expect(page.locator("#country")).toHaveValue("Japan");
-  await expect(page.locator("#department")).toBeFocused();
-  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
-  await openFocusedSelectSearch(page);
+  // The next select opens suggestions as soon as it receives focus.
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeVisible();
   await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
   await expect(page.locator("[data-tabby-select-host] .item")).toContainText([
     "Choose an option", "Accounting", "Design", "Engineering", "Marketing", "Sales", "Support"
@@ -669,9 +668,7 @@ test("preserves keyboard selection and light-DOM focus behavior", async () => {
   expect(pending).toEqual({ selectedIndex: selectedBefore, visible: true });
 
   await page.keyboard.press("Enter");
-  await expect(page.locator("#second")).toBeFocused();
-  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
-  await openFocusedSelectSearch(page);
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeVisible();
   await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
   await expect(page.locator("[data-tabby-select-host] .item")).toHaveText(["Second A", "Second B"]);
   expect(await page.evaluate(() => window.eventCounts)).toEqual({ input: 1, change: 1 });
@@ -706,9 +703,7 @@ test("preserves keyboard selection and light-DOM focus behavior", async () => {
   await page.locator("#many").focus();
   await page.keyboard.type("Option 1");
   await page.keyboard.press("Tab");
-  await expect(page.locator("#second")).toBeFocused();
-  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
-  await openFocusedSelectSearch(page);
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeVisible();
   await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
   await expect(page.locator("[data-tabby-select-host] .item")).toHaveText(["Second A", "Second B"]);
   expect(await page.evaluate(() => window.eventCounts)).toEqual({ input: 2, change: 2 });
