@@ -59,13 +59,13 @@
   const activationController = modules.createActivationController({
     core,
     chromeApi: chrome,
-    onStateChange({ active, settings, url }) {
+    onStateChange({ active, settings, url, initialReady }) {
       debugLogEnabled = settings.debugLogEnabled;
       session.setSearchMode(settings.searchMode);
       session.setShowSuggestionsOnMouseFocus(settings.showSuggestionsOnMouseFocus);
       session.reposition();
       if (active) {
-        featureRuntime.enable();
+        featureRuntime.enable({ checkInitialFocus: initialReady });
       } else {
         featureRuntime.disable();
       }
