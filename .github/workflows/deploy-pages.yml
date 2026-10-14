@@ -1,33 +1,21 @@
 name: Deploy support site
-
 on:
   push:
     branches: [main]
     paths:
-      - "docs/**"
-      - ".github/workflows/deploy-pages.yml"
+      - 'site/**'
+      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
-  group: pages
-  cancel-in-progress: true
-
+  group: tabbyselect-pages-cutover
+  cancel-in-progress: false
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-      - id: deployment
-        uses: actions/deploy-pages@v4
+    uses: apricotpersonallabo/site-platform/.github/workflows/pages-deploy.yml@503eb3c738c93f1df9feda2115f75833e53e33de
+    with:
+      site-directory: site
+      deploy-enabled: true

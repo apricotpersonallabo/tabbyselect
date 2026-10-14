@@ -11,8 +11,8 @@
     "issues": "https://github.com/apricotpersonallabo/tabbyselect/issues"
   },
   "theme": {
-    "primary": "#1269e8",
-    "accent": "#ffc928"
+    "primary": "#1260b8",
+    "accent": "#8c4300"
   },
   "languages": [
     "ja",
@@ -27,17 +27,45 @@
     {
       "slug": "index",
       "title": "概要",
-      "source": "content/index.md"
+      "source": "content/ja/index.html",
+      "locales": {
+        "en": {
+          "title": "Overview",
+          "source": "content/en/index.html",
+          "description": "TabbySelect is a browser extension that lets you quickly search and select native HTML select options with the keyboard."
+        }
+      },
+      "description": "TabbySelectは、Webページのselect要素をキーボードで素早く検索・選択できるブラウザ拡張機能です。"
     },
     {
       "slug": "manual",
       "title": "使い方",
-      "source": "content/manual.md"
+      "source": "content/ja/manual.html",
+      "locales": {
+        "en": {
+          "title": "Manual",
+          "source": "content/en/manual.html",
+          "description": "Setup instructions, keyboard controls, limitations, and a live playground for TabbySelect."
+        }
+      },
+      "scripts": [
+        "assets/product/playground.js"
+      ],
+      "description": "TabbySelectの設定方法、キーボード操作、Playgroundを掲載した利用マニュアルです。"
     },
     {
       "slug": "privacy",
       "title": "プライバシー",
-      "source": "content/privacy.md"
+      "source": "content/ja/privacy.html",
+      "locales": {
+        "en": {
+          "title": "Privacy",
+          "source": "content/en/privacy.html",
+          "description": "How TabbySelect processes information on your device, including storage, sharing, retention, and deletion."
+        }
+      },
+      "description": "TabbySelectが端末内で処理する情報と、保存・共有・削除に関する方針を説明します。"
     }
-  ]
+  ],
+  "favicon": "assets/product/icon-128.png"
 }
