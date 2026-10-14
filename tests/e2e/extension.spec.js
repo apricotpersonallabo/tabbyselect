@@ -270,6 +270,86 @@ test.afterAll(async () => {
   }
 });
 
+test("opens suggestions immediately on keyboard focus and reopens after Escape", async () => {
+  await setSettings({ searchMode: "prefix", showSuggestionsOnMouseFocus: true,
+    manualEnabledOverride: true, urlAllowPatterns: "" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  await page.locator("#searchBefore").click();
+  await page.keyboard.press("Tab");
+  const input = page.locator("[data-tabby-select-host] .query");
+  const root = page.locator("[data-tabby-select-host] .root");
+  await expect(input).toBeFocused();
+  await expect(root).toBeVisible();
+  await expect(input).toHaveValue("");
+  await expect(page.locator("#searchSelect")).toHaveJSProperty("selectedIndex", 0);
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await page.keyboard.press("Escape");
+  await expect(root).toBeHidden();
+  await expect(page.locator("#searchSelect")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(root).toBeHidden();
+  await page.keyboard.press("j");
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue("j");
+  await page.close();
+});
+
+test("allows native mouse select when setting is off; clicks reopen when on", async () => {
+  await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
+    urlAllowPatterns: "" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const root = page.locator("[data-tabby-select-host] .root");
+  await select.click();
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  await page.keyboard.press("Escape");
+  await setSettings({ showSuggestionsOnMouseFocus: true });
+  await select.click();
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await expect(root).toBeVisible();
+  await expect.poll(() => select.evaluate((el) => el.matches(":open"))).toBe(false);
+  await page.keyboard.press("Escape");
+  await expect(root).toBeHidden();
+  await select.click();
+  await expect(root).toBeVisible();
+  await page.close();
+});
+
+test("clicking suggestions commits once and preserves selection on open", async () => {
+  await setSettings({ showSuggestionsOnMouseFocus: true, manualEnabledOverride: true,
+    urlAllowPatterns: "" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  await select.click();
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+  await page.locator("[data-tabby-select-host] .item").filter({ hasText: /^Japan$/ }).click();
+  await expect(select).toHaveJSProperty("selectedIndex", 1);
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+  await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+  await page.close();
+});
+
+test("keeps programmatic and touch focus independent of mouse preference", async () => {
+  await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
+    urlAllowPatterns: "" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const input = page.locator("[data-tabby-select-host] .query");
+  await select.focus();
+  await expect(input).toBeFocused();
+  await page.keyboard.press("Escape");
+  await page.locator("#searchBefore").focus();
+  await select.dispatchEvent("pointerdown", { pointerType: "touch", button: 0,
+    bubbles: true, cancelable: true });
+  await expect(input).toBeFocused();
+  await page.close();
+});
+
 test("uses contains matching when the search mode has not been saved", async () => {
   expect(await worker.evaluate(() => chrome.storage.local.get("searchMode"))).toEqual({});
   const options = await context.newPage();
