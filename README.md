@@ -69,6 +69,8 @@ Configure the `browser-stores` GitHub Environment before submitting:
 - Repository variables: `CHROME_PUBLISHER_ID`, `CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `EDGE_PRODUCT_ID`, and `EDGE_CLIENT_ID`.
 - Environment secrets: `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`, `EDGE_API_KEY`, `AMO_JWT_ISSUER`, and `AMO_JWT_SECRET`.
 
+`CHROME_CLIENT_ID` and `EDGE_CLIENT_ID` may also be stored as environment secrets. The workflow uses the variable when configured and otherwise falls back to the same-named secret.
+
 If only one store fails, rerun the workflow for that store with the same version.
 
 ## User manual
