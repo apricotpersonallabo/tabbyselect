@@ -58,6 +58,15 @@ https://*.example.org/forms/*"></textarea>
         <p id="mouse-focus-description" class="description" data-i18n="mouseFocusDescription">Keyboard focus always opens search. Turn this off to preserve the browser's native select menu on mouse clicks.</p>
       </section>
 
+      <section class="section" aria-labelledby="keyboard-settings-title">
+        <h3 id="keyboard-settings-title" class="section-title" data-i18n="keyboardSettingsTitle">Keyboard controls</h3>
+        <label class="search-mode" for="moveFocusAfterEnter">
+          <input id="moveFocusAfterEnter" type="checkbox" disabled aria-describedby="enter-focus-description" />
+          <span data-i18n="moveFocusAfterEnter">Move to the next field after confirming with Enter (default on)</span>
+        </label>
+        <p id="enter-focus-description" class="description" data-i18n="enterFocusDescription">When on, Enter confirms an option and moves to the next field. When off, it confirms the option, closes suggestions, and keeps focus on the same select. Tab navigation is unchanged.</p>
+      </section>
+
       <section class="section" aria-labelledby="settings-file-title">
         <h3 id="settings-file-title" class="section-title" data-i18n="settingsFileTitle">Settings import / export</h3>
         <p class="description" data-i18n="settingsFileDescription">Export these settings to a TOML file or import them from a file. Importing updates only the included settings. The extension's overall enabled state and debug logging are unchanged.</p>

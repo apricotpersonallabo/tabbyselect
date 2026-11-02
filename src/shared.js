@@ -15,7 +15,8 @@
     urlFilterEnabled: "urlFilterEnabled",
     manualEnabledOverride: "manualEnabledOverride",
     searchMode: "searchMode",
-    showSuggestionsOnMouseFocus: "showSuggestionsOnMouseFocus"
+    showSuggestionsOnMouseFocus: "showSuggestionsOnMouseFocus",
+    moveFocusAfterEnter: "moveFocusAfterEnter"
   });
   const DEFAULT_SETTINGS = Object.freeze({
     debugLogEnabled: false,
@@ -23,7 +24,8 @@
     urlFilterEnabled: false,
     manualEnabledOverride: true,
     searchMode: "contains",
-    showSuggestionsOnMouseFocus: true
+    showSuggestionsOnMouseFocus: true,
+    moveFocusAfterEnter: true
   });
   const DEFAULT_METADATA = Object.freeze({
     contactEmail: "Not configured",
@@ -64,7 +66,8 @@
           ? DEFAULT_SETTINGS.manualEnabledOverride
           : Boolean(input[STORAGE_KEYS.manualEnabledOverride]),
       searchMode: normalizeSearchMode(input[STORAGE_KEYS.searchMode]),
-      showSuggestionsOnMouseFocus: input[STORAGE_KEYS.showSuggestionsOnMouseFocus] !== false
+      showSuggestionsOnMouseFocus: input[STORAGE_KEYS.showSuggestionsOnMouseFocus] !== false,
+      moveFocusAfterEnter: input[STORAGE_KEYS.moveFocusAfterEnter] !== false
     };
   }
 

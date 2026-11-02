@@ -12,7 +12,8 @@
     url_filter_enabled: "urlFilterEnabled",
     url_allow_patterns: "urlAllowPatterns",
     search_mode: "searchMode",
-    show_suggestions_on_mouse_focus: "showSuggestionsOnMouseFocus"
+    show_suggestions_on_mouse_focus: "showSuggestionsOnMouseFocus",
+    move_focus_after_enter: "moveFocusAfterEnter"
   });
 
   function settingsToToml(value) {
@@ -23,6 +24,7 @@
       `url_allow_patterns = ${JSON.stringify(core.parseUrlPatterns(settings.urlAllowPatterns))}`,
       `search_mode = ${JSON.stringify(settings.searchMode)}`,
       `show_suggestions_on_mouse_focus = ${settings.showSuggestionsOnMouseFocus}`,
+      `move_focus_after_enter = ${settings.moveFocusAfterEnter}`,
       ""
     ].join("\n");
   }

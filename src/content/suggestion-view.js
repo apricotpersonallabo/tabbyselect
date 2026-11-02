@@ -4,10 +4,12 @@
   const namespace =
     globalThis.TabbySelectContent || (globalThis.TabbySelectContent = {});
 
-  namespace.createSuggestionView = function createSuggestionView({ queryLabel }) {
+  namespace.createSuggestionView = function createSuggestionView({ queryLabel, formatTargetLabel }) {
     let host = null;
     let root = null;
     let queryInput = null;
+    let targetHighlight = null;
+    let targetTitle = null;
     let inputHandlers = {};
     let list = null;
     let copyrightLine = null;
@@ -42,7 +44,7 @@
           min-width: 220px;
           max-width: 360px;
           padding: 8px;
-          border: 1px solid rgba(0, 0, 0, 0.16);
+          border: 1px solid #2563eb;
           border-radius: 8px;
           background: #ffffff;
           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
@@ -50,6 +52,32 @@
           font: 12px "Segoe UI", sans-serif;
           pointer-events: none;
           overflow-y: auto;
+        }
+
+        .target-highlight {
+          position: fixed;
+          box-sizing: border-box;
+          border: 2px solid #2563eb;
+          border-radius: 6px;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+          pointer-events: none;
+        }
+
+        .target-title {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          overflow: hidden;
+          overflow-wrap: anywhere;
+          margin-bottom: 6px;
+          color: #1e40af;
+          font-weight: 600;
+          line-height: 1.4;
+          pointer-events: auto;
+        }
+
+        @media (forced-colors: active) {
+          .target-highlight, .root { border-color: Highlight; }
         }
 
         .query {
@@ -110,6 +138,15 @@
         }
       `;
 
+      targetHighlight = document.createElement("div");
+      targetHighlight.className = "target-highlight";
+      targetHighlight.hidden = true;
+      targetHighlight.setAttribute("aria-hidden", "true");
+
+      targetTitle = document.createElement("div");
+      targetTitle.className = "target-title";
+      targetTitle.id = "tabby-select-target-title";
+
       root = document.createElement("div");
       root.className = "root";
       root.hidden = true;
@@ -122,6 +159,7 @@
       queryInput.spellcheck = false;
       queryInput.setAttribute("aria-label", queryLabel);
       queryInput.setAttribute("role", "combobox");
+      queryInput.setAttribute("aria-describedby", targetTitle.id);
       queryInput.setAttribute("aria-autocomplete", "list");
       queryInput.setAttribute("aria-controls", "tabby-select-options");
       for (const [type, handler] of [
@@ -146,8 +184,8 @@
       copyrightLine = document.createElement("div");
       copyrightLine.className = "copyright";
 
-      root.append(queryInput, list, copyrightLine);
-      shadow.append(style, root);
+      root.append(targetTitle, queryInput, list, copyrightLine);
+      shadow.append(style, targetHighlight, root);
       document.documentElement.appendChild(host);
     }
 
@@ -159,6 +197,11 @@
       const viewportPadding = 8;
       const selectGap = 6;
       const selectRect = select.getBoundingClientRect();
+      targetHighlight.style.top = `${selectRect.top - 3}px`;
+      targetHighlight.style.left = `${selectRect.left - 3}px`;
+      targetHighlight.style.width = `${selectRect.width + 6}px`;
+      targetHighlight.style.height = `${selectRect.height + 6}px`;
+      targetHighlight.hidden = selectRect.width === 0 || selectRect.height === 0;
       const availableWidth = Math.max(1, window.innerWidth - viewportPadding * 2);
       const maxWidth = Math.min(360, availableWidth);
       const minWidth = Math.min(maxWidth, Math.max(220, Math.floor(selectRect.width)));
@@ -224,6 +267,41 @@
       }
     }
 
+    function getTargetName(select) {
+      const normalize = (text) => (text || "").replace(/\s+/g, " ").trim();
+      const references = normalize(select.getAttribute("aria-labelledby"));
+      const labelledBy = references ? normalize(references.split(" ").map((id) =>
+        select.ownerDocument.getElementById(id)?.textContent || "").join(" ")) : "";
+      if (labelledBy) {
+        return labelledBy;
+      }
+      const ariaLabel = normalize(select.getAttribute("aria-label"));
+      if (ariaLabel) {
+        return ariaLabel;
+      }
+      return normalize(Array.from(select.labels || [], (label) => {
+        const copy = label.cloneNode(true);
+        // Wrapping labels contain the select itself; option text is not its name.
+        for (const control of copy.querySelectorAll("select, input, textarea, button")) {
+          control.remove();
+        }
+        return copy.textContent;
+      }).join(" "));
+    }
+
+    function containsWheelEvent(event) {
+      if (!isVisible()) {
+        return false;
+      }
+      if (event.composedPath().includes(root)) {
+        return true;
+      }
+      // Padding and non-interactive content can target the page behind the UI.
+      const rect = root.getBoundingClientRect();
+      return event.clientX >= rect.left && event.clientX < rect.right &&
+        event.clientY >= rect.top && event.clientY < rect.bottom;
+    }
+
     function show({
       select,
       query,
@@ -234,6 +312,9 @@
       emptyMessage
     }) {
       ensureCreated();
+      const name = getTargetName(select);
+      targetTitle.textContent = name ? formatTargetLabel(name) : queryLabel;
+      targetTitle.title = targetTitle.textContent;
       if (!composing && queryInput.value !== query) {
         queryInput.value = query;
       }
@@ -278,6 +359,7 @@
     function hide() {
       if (root) {
         root.hidden = true;
+        targetHighlight.hidden = true;
         queryInput.setAttribute("aria-expanded", "false");
       }
     }
@@ -289,6 +371,8 @@
       host = null;
       root = null;
       queryInput = null;
+      targetHighlight = null;
+      targetTitle = null;
       list = null;
       copyrightLine = null;
     }
@@ -320,6 +404,6 @@
     }
 
     return Object.freeze({ show, hide, destroy, reposition, isVisible,
-      focusQuery, hasQueryFocus, isQueryEvent, containsFocusTarget, setInputHandlers });
+      focusQuery, hasQueryFocus, isQueryEvent, containsFocusTarget, containsWheelEvent, setInputHandlers });
   };
 })();

@@ -53,7 +53,7 @@
               <li><div><strong data-i18n="setupThreeTitle">対象ページでオンにする</strong><p data-i18n="setupThreeText">アイコンを再度クリックし、ポップアップのトグルをオンにします。設定変更は開いているページにも反映されます。</p></div></li>
             </ol>
             <h3 data-i18n="settingsFileTitle">設定のインポート・エクスポート</h3>
-            <p data-i18n="settingsFileText">設定画面の「エクスポート」で、URLフィルターのON/OFF、URLパターン、検索方式、マウスクリック時の候補表示を tabbyselect-settings.toml に保存できます。フィルターがオフでも保存済みパターンを含めます。「インポート」でファイルを選ぶと、含まれる項目だけを上書きして保存し、開いているページとiframeにも反映します。拡張機能全体のON/OFFとデバッグログ設定は変更しません。</p>
+            <p data-i18n="settingsFileText">設定画面の「エクスポート」で、URLフィルターのON/OFF、URLパターン、検索方式、マウスクリック時の候補表示、Enter確定後のフォーカス移動を tabbyselect-settings.toml に保存できます。フィルターがオフでも保存済みパターンを含めます。「インポート」でファイルを選ぶと、含まれる項目だけを上書きして保存し、開いているページとiframeにも反映します。拡張機能全体のON/OFFとデバッグログ設定は変更しません。</p>
             <p data-i18n="settingsFileFormatText">書き出した形式のTOMLファイルを読み込めます。値は1行の文字列配列、二重引用符の文字列、true/falseで記述し、空行と行全体のコメントにも対応します。URLパターンの空行と行頭・行末の空白は除去されます。不正な値や重複項目があるファイルは保存しません。</p>
           </section>
 
@@ -61,12 +61,14 @@
             <p class="section-index">02</p>
             <h2 data-i18n="keyboardTitle">キーボード操作</h2>
             <p data-i18n="keyboardIntro">Tabキーでselectへ移動すると候補UIがすぐに開きます。文字入力で検索し、矢印キーで候補を移動できます。Escで閉じた後は再度キー入力すると開けます。日本語IMEと全角文字にも対応します。</p>
+            <p data-i18n="enterFocusDescription">設定の「Enterで確定後、次のフィールドへ移動する」は初期設定でオンです。オフにすると、Enterで候補を確定して候補UIを閉じ、元のselectにフォーカスを残します。Tab／Shift+Tabの移動は変わりません。変更は自動保存され、開いている候補UIとiframeにも反映されます。</p>
+            <p data-i18n="suggestionContextDescription">候補UIを表示しているselectは青い枠で強調され、候補UIの上部に対象の項目名が表示されます。項目名を取得できない場合は「選択肢を検索」と表示します。候補UIの外でマウスホイールやトラックパッドによるスクロール入力をすると、未確定の候補を確定せずに閉じ、元のselectにフォーカスを戻します。候補UI内のスクロールでは閉じません。iframe内の候補UIは同じiframe内のホイール入力だけが対象です。</p>
             <div class="key-table" role="table" aria-label="キーボード操作" data-i18n-aria-label="keyboardTableLabel">
               <div role="row"><span role="cell"><kbd data-i18n="keyCharacters">文字入力</kbd></span><span role="cell" data-i18n="keyType">設定した検索方式で一致する候補に絞り込む</span></div>
               <div role="row"><span role="cell"><kbd>↑</kbd> <kbd>↓</kbd></span><span role="cell" data-i18n="keyArrows">候補のハイライトを移動する</span></div>
               <div role="row"><span role="cell"><kbd>Backspace</kbd></span><span role="cell" data-i18n="keyBackspace">検索文字を1文字削除する</span></div>
               <div role="row"><span role="cell"><kbd>Esc</kbd></span><span role="cell" data-i18n="keyEscape">検索をクリアし、空の状態でもう一度押すと候補を閉じる</span></div>
-              <div role="row"><span role="cell"><kbd>Enter</kbd></span><span role="cell" data-i18n="keyEnter">IME変換中は文字を確定する。文字確定後、もう一度押すと選択肢を確定して次へ移動する</span></div>
+              <div role="row"><span role="cell"><kbd>Enter</kbd></span><span role="cell" data-i18n="keyEnter">IME変換中は文字を確定する。文字確定後、もう一度押すと候補を確定する。設定がオンなら次へ移動する</span></div>
               <div role="row"><span role="cell"><kbd>Tab</kbd></span><span role="cell" data-i18n="keyTab">候補を確定して通常どおり次へ移動する</span></div>
             </div>
           </section>

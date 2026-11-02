@@ -29,6 +29,7 @@
     let composing = false;
     let returningFocus = false;
     let showSuggestionsOnMouseFocus = true;
+    let moveFocusAfterEnter = core.DEFAULT_SETTINGS.moveFocusAfterEnter;
     let hasUserInteracted = false;
     let mousePointerSelect = null;
     let lastTouchPointerTime = -Infinity;
@@ -526,7 +527,9 @@
         });
         if (committed) {
           close(select, { restoreFocus: true });
-          focusNavigator.moveAfterEnter(select, snapshot, traceId);
+          if (moveFocusAfterEnter) {
+            focusNavigator.moveAfterEnter(select, snapshot, traceId);
+          }
         } else {
           render();
         }
@@ -554,6 +557,12 @@
 
     }
 
+    function handleWheel(event) {
+      if (activeSelect && view.isVisible() && !view.containsWheelEvent(event)) {
+        close(activeSelect, { restoreFocus: true });
+      }
+    }
+
     function handleSuggestionClick(index) {
       if (!activeSelect || !view.isVisible()) {
         return;
@@ -569,6 +578,10 @@
 
     function setShowSuggestionsOnMouseFocus(value) {
       showSuggestionsOnMouseFocus = value !== false;
+    }
+
+    function setMoveFocusAfterEnter(value) {
+      moveFocusAfterEnter = value !== false;
     }
 
     function setCopyright(value) {
@@ -631,12 +644,14 @@
       handleMouseDown,
       handlePointerEnd,
       handleClick,
+      handleWheel,
       handleKeydown,
       handleFocusin,
       handleFocusout,
       setCopyright,
       setSearchMode,
       setShowSuggestionsOnMouseFocus,
+      setMoveFocusAfterEnter,
       reposition,
       resetForNavigation,
       destroy

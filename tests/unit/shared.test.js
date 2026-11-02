@@ -16,7 +16,8 @@ test("normalizes settings with stable defaults", () => {
       urlFilterEnabled: false,
       manualEnabledOverride: false,
       searchMode: "contains",
-      showSuggestionsOnMouseFocus: true
+      showSuggestionsOnMouseFocus: true,
+      moveFocusAfterEnter: true
     }
   );
 });
@@ -145,7 +146,6 @@ test("loads and normalizes metadata through an injected fetcher", async () => {
   );
 });
 
-
 test("URL filter defaults off even with saved patterns and only accepts true", () => {
   for (const urlFilterEnabled of [undefined, null, false, 0, 1, "true", "false"]) {
     const settings = { urlFilterEnabled, urlAllowPatterns: "https://allowed.example/*" };
@@ -171,4 +171,12 @@ test("URL filter combines patterns, supported schemes, and manual state", () => 
       }
     }
   }
+});
+
+test("moves focus after Enter by default and preserves explicit off", () => {
+  for (const value of [undefined, null, true, 1, 0, "false", "true", {}, []]) {
+    assert.equal(core.normalizeSettings({ moveFocusAfterEnter: value }).moveFocusAfterEnter, true);
+  }
+  assert.equal(core.normalizeSettings({ moveFocusAfterEnter: false }).moveFocusAfterEnter, false);
+  assert.equal(core.STORAGE_KEYS.moveFocusAfterEnter, "moveFocusAfterEnter");
 });

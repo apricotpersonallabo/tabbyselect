@@ -307,10 +307,10 @@ test("opens a localized welcome tab on installation with settings, manual, and c
   expect(context.pages().filter((page) => page.url() === url)).toHaveLength(0);
 });
 
-test("exports and restores the four portable settings from a TOML download", async () => {
+test("exports and restores all portable settings from a TOML download", async () => {
   const patterns = '  https://example.com/日本語/*  \n\nhttps://example.org/"quote"/*';
   await setSettings({ urlFilterEnabled: false, urlAllowPatterns: patterns,
-    searchMode: "prefix", showSuggestionsOnMouseFocus: false,
+    searchMode: "prefix", showSuggestionsOnMouseFocus: false, moveFocusAfterEnter: false,
     manualEnabledOverride: false, debugLogEnabled: true });
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
@@ -324,11 +324,11 @@ test("exports and restores the four portable settings from a TOML download", asy
   const toml = fs.readFileSync(downloadPath, "utf8");
   expect(toml).toBe('# TabbySelect settings\nurl_filter_enabled = false\n' +
     'url_allow_patterns = ["https://example.com/日本語/*","https://example.org/\\"quote\\"/*"]\n' +
-    'search_mode = "prefix"\nshow_suggestions_on_mouse_focus = false\n');
+    'search_mode = "prefix"\nshow_suggestions_on_mouse_focus = false\nmove_focus_after_enter = false\n');
   await expect(options.locator("#status")).toHaveText("Settings exported.");
   await options.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-settings-file.png"), fullPage: true });
   await setSettings({ urlFilterEnabled: true, urlAllowPatterns: "", searchMode: "contains",
-    showSuggestionsOnMouseFocus: true, manualEnabledOverride: true, debugLogEnabled: false });
+    showSuggestionsOnMouseFocus: true, moveFocusAfterEnter: true, manualEnabledOverride: true, debugLogEnabled: false });
   await options.reload();
   const chooser = options.waitForEvent("filechooser");
   await options.getByRole("button", { name: "Import", exact: true }).click();
@@ -336,12 +336,13 @@ test("exports and restores the four portable settings from a TOML download", asy
   await expect(options.locator("#status")).toHaveText("Settings imported and saved.");
   expect(await worker.evaluate(() => chrome.storage.local.get(null))).toMatchObject({
     urlFilterEnabled: false, urlAllowPatterns: 'https://example.com/日本語/*\nhttps://example.org/"quote"/*',
-    searchMode: "prefix", showSuggestionsOnMouseFocus: false,
+    searchMode: "prefix", showSuggestionsOnMouseFocus: false, moveFocusAfterEnter: false,
     manualEnabledOverride: true, debugLogEnabled: false
   });
   await expect(options.locator("#urlAllowPatterns")).toBeDisabled();
   await expect(options.locator("#searchModePrefix")).toBeChecked();
   await expect(options.locator("#showSuggestionsOnMouseFocus")).not.toBeChecked();
+  await expect(options.locator("#moveFocusAfterEnter")).not.toBeChecked();
   await options.reload();
   await expect(options.locator("#urlFilterEnabled")).not.toBeChecked();
   await expect(options.locator("#searchModePrefix")).toBeChecked();
@@ -351,7 +352,7 @@ test("exports and restores the four portable settings from a TOML download", asy
 test("partially imports settings and updates open frames", async () => {
   const pattern = "https://unrelated.example/*";
   await setSettings({ urlFilterEnabled: true, urlAllowPatterns: pattern, searchMode: "prefix",
-    showSuggestionsOnMouseFocus: true, manualEnabledOverride: true, debugLogEnabled: false });
+    showSuggestionsOnMouseFocus: true, moveFocusAfterEnter: true, manualEnabledOverride: true, debugLogEnabled: false });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/blocked/frames`);
   const options = await context.newPage();
@@ -394,7 +395,7 @@ test("waits for pending autosaves and blocks editing during import", async () =>
   await options.locator("#importFile").setInputFiles({ name: "pending.toml", mimeType: "application/toml",
     buffer: Buffer.from("show_suggestions_on_mouse_focus = true\nsearch_mode = \"prefix\"\n") });
   for (const selector of ["#exportSettings", "#importSettings", "#urlFilterEnabled",
-    "#urlAllowPatterns", "#searchModePrefix", "#showSuggestionsOnMouseFocus"]) {
+    "#urlAllowPatterns", "#searchModePrefix", "#showSuggestionsOnMouseFocus", "#moveFocusAfterEnter"]) {
     await expect(options.locator(selector)).toBeDisabled();
   }
   expect(await options.evaluate(() => window.settingsWrites)).toEqual([{ showSuggestionsOnMouseFocus: false }]);
@@ -1093,6 +1094,10 @@ test("describes the mouse focus setting in both manual languages", async () => {
   await expect(page.locator('[data-i18n="settingsFileText"]')).toContainText("tabbyselect-settings.toml");
   await expect(page.locator('[data-i18n="setupTwoText"]')).toContainText("Enable URL filter is off by default");
   await expect(page.locator('[data-i18n="setupPickerTitle"]')).toHaveText("Suggestion display");
+  await expect(page.locator('[data-i18n="suggestionContextDescription"]')).toContainText("blue outline");
+  await expect(page.locator('[data-i18n="suggestionContextDescription"]')).toContainText("without confirming");
+  await expect(page.locator('[data-i18n="enterFocusDescription"]')).toContainText("on by default");
+  await expect(page.locator('[data-i18n="enterFocusDescription"]')).toContainText("keeps focus on the same select");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
     .toContainText("on by default");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
@@ -1104,6 +1109,10 @@ test("describes the mouse focus setting in both manual languages", async () => {
   await expect(page.locator('[data-i18n="setupTwoText"]')).toContainText("URLフィルターを有効にする");
   await expect(page.locator('[data-i18n="setupTwoText"]')).toContainText("初期設定でオフ");
   await expect(page.locator('[data-i18n="setupPickerTitle"]')).toHaveText("候補UIの表示");
+  await expect(page.locator('[data-i18n="suggestionContextDescription"]')).toContainText("青い枠");
+  await expect(page.locator('[data-i18n="suggestionContextDescription"]')).toContainText("未確定の候補を確定せずに閉じ");
+  await expect(page.locator('[data-i18n="enterFocusDescription"]')).toContainText("初期設定でオン");
+  await expect(page.locator('[data-i18n="enterFocusDescription"]')).toContainText("元のselectにフォーカスを残します");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
     .toContainText("初期設定でオン");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
@@ -1221,59 +1230,63 @@ test("preserves keyboard selection and light-DOM focus behavior", async () => {
   await page.close();
 });
 
-test("handles empty and disabled options without bypassing native constraints", async () => {
-  await setSettings({
-    urlFilterEnabled: true, urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
-    manualEnabledOverride: true
-  });
-  const page = await context.newPage();
-  await page.goto(`http://127.0.0.1:${port}/allowed/options`);
-  await page.locator("#before").click();
-  await page.locator("#optionStates").focus();
-  await openFocusedSelectSearch(page);
+for (const moveFocusAfterEnter of [true, false]) {
+  test(`handles empty and disabled options without bypassing native constraints (move focus: ${moveFocusAfterEnter})`, async () => {
+    await setSettings({ moveFocusAfterEnter });
+    await setSettings({
+      urlFilterEnabled: true, urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
+      manualEnabledOverride: true
+    });
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${port}/allowed/options`);
+    await page.locator("#before").click();
+    await page.locator("#optionStates").focus();
+    await openFocusedSelectSearch(page);
 
-  expect(
-    await page.evaluate(() => {
-      const items = document
-        .querySelector("[data-tabby-select-host]")
-        .shadowRoot.querySelectorAll(".item");
-      return Array.from(items, (item) => item.textContent);
-    })
-  ).toEqual(["(Empty)", "Enabled option"]);
-
-  await page.keyboard.type("Disabled");
-  expect(
-    await page.evaluate(
-      () =>
-        document
+    expect(
+      await page.evaluate(() => {
+        const items = document
           .querySelector("[data-tabby-select-host]")
-          .shadowRoot.querySelector(".item.empty").textContent
-    )
-  ).toBe("No matching options");
-  await page.keyboard.press("Escape");
+          .shadowRoot.querySelectorAll(".item");
+        return Array.from(items, (item) => item.textContent);
+      })
+    ).toEqual(["(Empty)", "Enabled option"]);
 
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("Enter");
-  await expect(page.locator("#optionStatesAfter")).toBeFocused();
-  expect(await page.locator("#optionStates").evaluate((select) => select.selectedIndex)).toBe(0);
-  expect(await page.evaluate(() => window.optionStateEvents)).toEqual({ input: 1, change: 1 });
+    await page.keyboard.type("Disabled");
+    expect(
+      await page.evaluate(
+        () =>
+          document
+            .querySelector("[data-tabby-select-host]")
+            .shadowRoot.querySelector(".item.empty").textContent
+      )
+    ).toBe("No matching options");
+    await page.keyboard.press("Escape");
 
-  await page.locator("#optionStates").focus();
-  await page.keyboard.type("Enabled");
-  await page.locator("[data-tabby-select-host] .query").evaluate((input) => {
-    const select = document.getElementById("optionStates");
-    select.options[3].disabled = true;
-    input.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true, composed: true, cancelable: true })
-    );
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(moveFocusAfterEnter ? "#optionStatesAfter" : "#optionStates")).toBeFocused();
+    expect(await page.locator("#optionStates").evaluate((select) => select.selectedIndex)).toBe(0);
+    expect(await page.evaluate(() => window.optionStateEvents)).toEqual({ input: 1, change: 1 });
+
+    await page.locator("#optionStates").focus();
+    await page.keyboard.type("Enabled");
+    await page.locator("[data-tabby-select-host] .query").evaluate((input) => {
+      const select = document.getElementById("optionStates");
+      select.options[3].disabled = true;
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true, composed: true, cancelable: true })
+      );
+    });
+    await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+    expect(await page.locator("#optionStates").evaluate((select) => select.selectedIndex)).toBe(0);
+    expect(await page.evaluate(() => window.optionStateEvents)).toEqual({ input: 1, change: 1 });
+    await page.close();
   });
-  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
-  expect(await page.locator("#optionStates").evaluate((select) => select.selectedIndex)).toBe(0);
-  expect(await page.evaluate(() => window.optionStateEvents)).toEqual({ input: 1, change: 1 });
-  await page.close();
-});
+}
 
 test("renders the popup and URL settings", async () => {
+  await setSettings({ moveFocusAfterEnter: true });
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await expect(popup.locator("#iconToggleEnabled")).toBeDisabled();
@@ -1457,41 +1470,45 @@ test("applies search mode changes to all frame types", async () => {
   await page.close();
 });
 
-test("handles native IME composition without committing the select", async () => {
-  const page = await context.newPage();
-  await openUnicodeSearch(page);
-  const input = page.getByRole("combobox", { name: "Search options" });
-  const items = page.locator("[data-tabby-select-host] .item");
-  const cdp = await context.newCDPSession(page);
-  await expect(input).toHaveAttribute("tabindex", "-1");
-  await expect(items).toHaveCount(10);
-  await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
-  await expect(input).toHaveValue("にほん");
-  await expect(items).toHaveCount(10);
-  for (const key of ["Enter", "ArrowDown", "Escape", "Tab"]) {
-    expect(await input.evaluate((element, key) => element.dispatchEvent(
-      new KeyboardEvent("keydown", { key, bubbles: true, composed: true, cancelable: true, isComposing: true })
-    ), key)).toBe(true);
-  }
-  await cdp.send("Input.imeSetComposition", { text: "日本", selectionStart: 2, selectionEnd: 2 });
-  await setSettings({ searchMode: "contains" });
-  await page.locator("#unicodeSelect").evaluate((select) => select.appendChild(new Option("日本国")));
-  await expect(items).toHaveCount(11);
-  await expect(input).toHaveValue("日本");
-  await cdp.send("Input.insertText", { text: "日本" });
-  await expect(input).toHaveValue("日本");
-  await expect(items).toHaveText(["日本", "日本語", "東京日本", "😀日本", "日本国"]);
-  await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 0);
-  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
-  await page.keyboard.press("Enter");
-  await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 1);
-  await expect(page.locator("#unicodeAfter")).toBeFocused();
-  expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 1, change: 1 });
-  await cdp.detach();
-  await page.close();
-});
+for (const moveFocusAfterEnter of [true, false]) {
+  test(`handles native IME composition without committing the select (move focus: ${moveFocusAfterEnter})`, async () => {
+    await setSettings({ moveFocusAfterEnter });
+    const page = await context.newPage();
+    await openUnicodeSearch(page);
+    const input = page.getByRole("combobox", { name: "Search options" });
+    const items = page.locator("[data-tabby-select-host] .item");
+    const cdp = await context.newCDPSession(page);
+    await expect(input).toHaveAttribute("tabindex", "-1");
+    await expect(items).toHaveCount(10);
+    await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+    await expect(input).toHaveValue("にほん");
+    await expect(items).toHaveCount(10);
+    for (const key of ["Enter", "ArrowDown", "Escape", "Tab"]) {
+      expect(await input.evaluate((element, key) => element.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true, composed: true, cancelable: true, isComposing: true })
+      ), key)).toBe(true);
+    }
+    await cdp.send("Input.imeSetComposition", { text: "日本", selectionStart: 2, selectionEnd: 2 });
+    await setSettings({ searchMode: "contains" });
+    await page.locator("#unicodeSelect").evaluate((select) => select.appendChild(new Option("日本国")));
+    await expect(items).toHaveCount(11);
+    await expect(input).toHaveValue("日本");
+    await cdp.send("Input.insertText", { text: "日本" });
+    await expect(input).toHaveValue("日本");
+    await expect(items).toHaveText(["日本", "日本語", "東京日本", "😀日本", "日本国"]);
+    await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 0);
+    expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 0, change: 0 });
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#unicodeSelect")).toHaveJSProperty("selectedIndex", 1);
+    await expect(page.locator(moveFocusAfterEnter ? "#unicodeAfter" : "#unicodeSelect")).toBeFocused();
+    expect(await page.evaluate(() => window.unicodeEvents)).toEqual({ input: 1, change: 1 });
+    await cdp.detach();
+    await page.close();
+  });
+}
 
 test("supports full-width text, paste, replacement, and native deletion in both modes", async () => {
+  await setSettings({ moveFocusAfterEnter: true });
   const page = await context.newPage();
   for (const mode of ["prefix", "contains"]) {
     await openUnicodeSearch(page, mode);
@@ -1678,3 +1695,308 @@ test("searches and confirms single selects independently of their size", async (
   await page.close();
 });
 
+test("persists the Enter focus preference and preserves it when importing older files", async () => {
+  await worker.evaluate(() => chrome.storage.local.remove("moveFocusAfterEnter"));
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  const toggle = options.locator("#moveFocusAfterEnter");
+  await expect(toggle).toBeEnabled();
+  await expect(toggle).toBeChecked();
+  await toggle.uncheck();
+  await expect(options.locator("#status")).toHaveText("Settings saved.");
+  await options.reload();
+  await expect(toggle).not.toBeChecked();
+  await options.locator("#importFile").setInputFiles({ name: "old.toml", mimeType: "application/toml",
+    buffer: Buffer.from('search_mode = "prefix"\n') });
+  await expect(options.locator("#status")).toHaveText("Settings imported and saved.");
+  await expect(toggle).not.toBeChecked();
+  await toggle.check();
+  await expect.poll(() => worker.evaluate(() => chrome.storage.local.get("moveFocusAfterEnter")))
+    .toEqual({ moveFocusAfterEnter: true });
+  await options.reload();
+  await expect(toggle).toBeChecked();
+  await options.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-enter-focus-options.png"), fullPage: true });
+  await options.close();
+});
+
+test("applies Enter focus changes to an open search while retaining other controls", async () => {
+  await setSettings({ moveFocusAfterEnter: true, searchMode: "prefix",
+    showSuggestionsOnMouseFocus: true, manualEnabledOverride: true, urlFilterEnabled: false });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const query = page.locator("[data-tabby-select-host] .query");
+  const root = page.locator("[data-tabby-select-host] .root");
+  await page.locator("#searchBefore").click();
+  await select.focus();
+  await page.keyboard.type("Japan");
+  await setSettings({ moveFocusAfterEnter: false });
+  await page.keyboard.press("Enter");
+  await expect(select).toHaveJSProperty("selectedIndex", 1);
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 1, change: 1 });
+
+  // Confirming the already selected value still closes the UI and stays here.
+  await page.keyboard.type("Japan");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("[data-tabby-select-host] .pending")).toHaveText("Japan");
+  await page.keyboard.press("Enter");
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 2, change: 2 });
+
+  await page.keyboard.type("zzz");
+  await page.keyboard.press("Enter");
+  await expect(query).toBeFocused();
+  expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 2, change: 2 });
+  await page.keyboard.type("Panama");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#searchAfter")).toBeFocused();
+  await expect(select).toHaveJSProperty("selectedIndex", 2);
+
+  await select.focus();
+  await page.keyboard.type("Japan");
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.locator("#searchBefore")).toBeFocused();
+  await expect(select).toHaveJSProperty("selectedIndex", 3);
+
+  await select.focus();
+  await page.keyboard.type("Panama");
+  await page.locator("[data-tabby-select-host] .item", { hasText: "Panama" }).click();
+  await expect(select).toBeFocused();
+  await expect(root).toBeHidden();
+  await expect(select).toHaveJSProperty("selectedIndex", 2);
+
+  await page.keyboard.type("Panama");
+  await setSettings({ moveFocusAfterEnter: true });
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#searchAfter")).toBeFocused();
+  await page.close();
+});
+
+test("applies Enter focus preference changes across frame types", async () => {
+  await setSettings({ moveFocusAfterEnter: true, searchMode: "prefix",
+    showSuggestionsOnMouseFocus: true, manualEnabledOverride: true, urlFilterEnabled: false });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
+  for (const name of ["same", "cross", "nested", "blank", "srcdoc"]) {
+    const frame = page.frame({ name });
+    await openFrameSuggestion(frame);
+    await page.keyboard.type("Target");
+    await setSettings({ moveFocusAfterEnter: false });
+    await page.keyboard.press("Enter");
+    await expect(frame.locator("#frameSelect")).toBeFocused();
+    await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 2);
+    await expect(frame.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await page.keyboard.type("Target");
+    await setSettings({ moveFocusAfterEnter: true });
+    await page.keyboard.press("Enter");
+    await expect(frame.locator("#frameAfter")).toBeFocused();
+  }
+  await page.close();
+});
+
+test("identifies the target using ARIA names, labels, and a safe fallback", async () => {
+  await setSettings({ manualEnabledOverride: true, urlFilterEnabled: false, moveFocusAfterEnter: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  await page.evaluate(() => {
+    const select = document.getElementById("searchSelect");
+    const wrapper = document.createElement("label");
+    wrapper.append(" Wrapped label ");
+    select.before(wrapper);
+    wrapper.append(select);
+    const external = document.createElement("label");
+    external.htmlFor = select.id;
+    external.textContent = " External label ";
+    document.body.append(external);
+    for (const [id, text] of [["nameOne", " Country \n"], ["nameTwo", " or region "]]) {
+      const span = document.createElement("span");
+      span.id = id;
+      span.textContent = text;
+      document.body.append(span);
+    }
+  });
+  const select = page.locator("#searchSelect");
+  const title = page.locator("[data-tabby-select-host] .target-title");
+  const query = page.getByRole("combobox", { name: "Search options" });
+  const show = async () => {
+    await page.locator("#searchBefore").click();
+    await select.focus();
+    await expect(query).toBeFocused();
+  };
+  await show();
+  await expect(title).toHaveText("Suggestions for Wrapped label External label");
+  await select.evaluate((element) => element.setAttribute("aria-label", " ARIA name "));
+  await show();
+  await expect(title).toHaveText("Suggestions for ARIA name");
+  await select.evaluate((element) => element.setAttribute("aria-labelledby", "missing nameOne nameTwo"));
+  await show();
+  await expect(title).toHaveText("Suggestions for Country or region");
+  await expect(query).toHaveAccessibleDescription("Suggestions for Country or region");
+  await expect(query).toHaveAttribute("aria-controls", "tabby-select-options");
+  await select.evaluate((element) => element.setAttribute("aria-labelledby", "missing"));
+  await show();
+  await expect(title).toHaveText("Suggestions for ARIA name");
+  const longName = '<img src=x onerror="alert(1)"> ' + "Very long field name ".repeat(20);
+  await select.evaluate((element, name) => element.setAttribute("aria-label", name), longName);
+  await show();
+  await expect(title).toHaveText(`Suggestions for ${longName.trim()}`);
+  await expect(title).toHaveAttribute("title", `Suggestions for ${longName.trim()}`);
+  expect(await title.evaluate((element) => ({
+    children: element.children.length,
+    clamp: getComputedStyle(element).webkitLineClamp
+  }))).toMatchObject({ children: 0, clamp: "2" });
+  expect(await title.evaluate((element) => element.clientHeight <= parseFloat(getComputedStyle(element).lineHeight) * 2 + 1)).toBe(true);
+  await select.evaluate((element) => {
+    element.removeAttribute("aria-label");
+    for (const label of element.labels) {
+      for (const node of Array.from(label.childNodes)) {
+        if (node !== element) node.remove();
+      }
+    }
+  });
+  await show();
+  await expect(title).toHaveText("Search options");
+  await page.close();
+});
+
+test("tracks target highlighting without altering the page and cleans up on every exit", async () => {
+  await setSettings({ manualEnabledOverride: true, urlFilterEnabled: false });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  await page.evaluate(() => {
+    document.body.style.minHeight = "1600px";
+    const scroller = document.createElement("div");
+    scroller.id = "targetScroller";
+    scroller.style.cssText = "height:250px;overflow:auto;margin-top:80px";
+    const content = document.createElement("div");
+    content.style.cssText = "height:800px;padding-top:90px";
+    document.body.append(scroller);
+    scroller.append(content);
+    const select = document.getElementById("searchSelect");
+    select.setAttribute("aria-label", "Country");
+    content.append(select);
+    const other = select.cloneNode(true);
+    other.id = "otherSelect";
+    other.setAttribute("aria-label", "Priority");
+    content.append(other);
+    window.originalSelectStyle = select.getAttribute("style");
+  });
+  const select = page.locator("#searchSelect");
+  const highlight = page.locator("[data-tabby-select-host] .target-highlight");
+  const title = page.locator("[data-tabby-select-host] .target-title");
+  const aligned = async (id) => expect.poll(() => page.evaluate((id) => {
+    const rect = document.getElementById(id).getBoundingClientRect();
+    const mark = document.querySelector("[data-tabby-select-host]").shadowRoot.querySelector(".target-highlight");
+    const box = mark.getBoundingClientRect();
+    return !mark.hidden && Math.abs(box.left - rect.left + 3) < 1 &&
+      Math.abs(box.top - rect.top + 3) < 1 && Math.abs(box.width - rect.width - 6) < 1 &&
+      Math.abs(box.height - rect.height - 6) < 1;
+  }, id)).toBe(true);
+  await page.locator("#searchBefore").click();
+  await select.focus();
+  await aligned("searchSelect");
+  await expect(title).toHaveText("Suggestions for Country");
+  expect(await highlight.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
+  expect(await select.evaluate((element) => element.getAttribute("style") === window.originalSelectStyle)).toBe(true);
+  await page.locator("#targetScroller").evaluate((element) => { element.scrollTop = 30; });
+  await aligned("searchSelect");
+  await page.evaluate(() => window.scrollTo(0, 20));
+  await aligned("searchSelect");
+  await page.setViewportSize({ width: 520, height: 500 });
+  await aligned("searchSelect");
+  await page.locator("#otherSelect").focus();
+  await aligned("otherSelect");
+  await expect(title).toHaveText("Suggestions for Priority");
+  await page.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-target-context.png") });
+  await page.keyboard.press("Escape");
+  await expect(highlight).toBeHidden();
+  await page.keyboard.type("Panama");
+  await expect(highlight).toBeVisible();
+  await page.locator("#otherSelect").evaluate((element) => element.remove());
+  await expect(highlight).toBeHidden();
+  await select.focus();
+  await expect(highlight).toBeVisible();
+  await setSettings({ manualEnabledOverride: false });
+  await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
+  await setSettings({ manualEnabledOverride: true });
+  await page.close();
+});
+
+test("closes only on outside wheel input without committing or preventing page scrolling", async () => {
+  await setSettings({ manualEnabledOverride: true, urlFilterEnabled: false, moveFocusAfterEnter: false });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/keyboard`);
+  await page.evaluate(() => {
+    document.body.style.minHeight = "3000px";
+    document.getElementById("many").setAttribute("aria-label", "Country");
+  });
+  await page.locator("#before").click();
+  await page.locator("#many").focus();
+  const root = page.locator("[data-tabby-select-host] .root");
+  const highlight = page.locator("[data-tabby-select-host] .target-highlight");
+  const list = page.locator("[data-tabby-select-host] .list");
+  await page.keyboard.press("ArrowDown");
+  await list.hover();
+  await page.mouse.wheel(0, 120);
+  await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect(root).toBeVisible();
+  for (const selector of [".target-title", ".query", ".copyright"]) {
+    const box = await page.locator(`[data-tabby-select-host] ${selector}`).boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, 25);
+    await expect(root).toBeVisible();
+  }
+  const box = await root.boundingBox();
+  await page.mouse.move(box.x + 2, box.y + 2);
+  await page.mouse.wheel(0, 25);
+  await expect(root).toBeVisible();
+  // Scroll events without wheel input are not an exit trigger.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(root).toBeVisible();
+  await page.mouse.move(10, 100);
+  await page.mouse.wheel(0, 180);
+  await expect(root).toBeHidden();
+  await expect(highlight).toBeHidden();
+  await expect(page.locator("#many")).toBeFocused();
+  await expect(page.locator("#many")).toHaveJSProperty("selectedIndex", 0);
+  expect(await page.evaluate(() => window.eventCounts)).toEqual({ input: 0, change: 0 });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await page.keyboard.type("Option 02");
+  await expect(page.locator("[data-tabby-select-host] .query")).toHaveValue("Option 02");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#many")).toHaveJSProperty("selectedIndex", 1);
+  expect(await page.evaluate(() => window.eventCounts)).toEqual({ input: 1, change: 1 });
+  await setSettings({ moveFocusAfterEnter: true });
+  await page.close();
+});
+
+test("keeps wheel dismissal local to each frame document", async () => {
+  await setSettings({ manualEnabledOverride: true, urlFilterEnabled: false });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
+  for (const name of ["same", "cross", "nested", "blank", "srcdoc"]) {
+    const frame = page.frame({ name });
+    await frame.locator("#frameSelect").evaluate((element) => {
+      element.setAttribute("aria-label", "Frame field");
+      window.frameEvents = 0;
+      element.addEventListener("change", () => window.frameEvents++);
+    });
+    await openFrameSuggestion(frame);
+    await expect(frame.locator("[data-tabby-select-host] .target-title")).toHaveText("Suggestions for Frame field");
+    await expect(frame.locator("[data-tabby-select-host] .target-highlight")).toBeVisible();
+    await page.keyboard.type("Target");
+    // Wheel events in the parent and siblings must not dismiss this frame's UI.
+    await page.evaluate(() => document.body.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 10 })));
+    await expect(frame.locator("[data-tabby-select-host] .root")).toBeVisible();
+    await frame.evaluate(() => document.body.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 10, clientX: 0, clientY: 0 })));
+    await expect(frame.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await expect(frame.locator("[data-tabby-select-host] .target-highlight")).toBeHidden();
+    await expect(frame.locator("#frameSelect")).toBeFocused();
+    await expect(frame.locator("#frameSelect")).toHaveJSProperty("selectedIndex", 0);
+    expect(await frame.evaluate(() => window.frameEvents)).toBe(0);
+  }
+  await page.close();
+});

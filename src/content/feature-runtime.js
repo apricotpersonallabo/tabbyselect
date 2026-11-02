@@ -70,6 +70,9 @@
         { signal }
       );
       window.addEventListener("blur", () => session.destroy(), { signal });
+      document.addEventListener("wheel", (event) => session.handleWheel(event), {
+        capture: true, passive: true, signal
+      });
       window.addEventListener("scroll", () => session.reposition(), {
         capture: true,
         signal

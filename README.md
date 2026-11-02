@@ -85,6 +85,7 @@ url_filter_enabled = false
 url_allow_patterns = ["https://example.com/*"]
 search_mode = "contains"
 show_suggestions_on_mouse_focus = true
+move_focus_after_enter = true
 ```
 
 In the settings page, choose **Prefix match** or **Contains match** (default). For example, `Ja` matches `Japan` in prefix mode, while `pan` matches it in contains mode. Both modes ignore case and trim leading and trailing whitespace. Changes are saved automatically and apply to open pages and their iframes.
@@ -98,6 +99,18 @@ the browser's native picker on mouse clicks. Touch focus continues to open sugge
 Keyboard search is always enabled. Arrow keys move the highlight, Enter/Tab confirm,
 and Escape clears the query or closes suggestions. After closing with Escape, a
 new qualifying key or mouse click can reopen the UI without a focus-change loop.
+
+**Move to the next field after confirming with Enter** is on by default. Turn it
+off under **Keyboard controls** to confirm the option, close suggestions, and keep
+focus on the same select. Changes apply immediately to open pages and iframes.
+Tab and Shift+Tab navigation are unchanged. Older TOML imports that omit
+`move_focus_after_enter` preserve the current preference.
+
+The active select is outlined in blue, and the suggestion UI displays its field
+name (from ARIA attributes or associated labels), or “Search options” when unnamed.
+Mouse-wheel or trackpad scrolling outside the UI dismisses it without confirming
+a pending option and returns focus to the select. Scrolling inside the UI keeps it
+open. Wheel dismissal is local to the same document, including within iframes.
 
 Options are filtered using prefix or contains mode. No select value changes until
 a candidate is confirmed. Mouse clicks on suggestion items also confirm selection.

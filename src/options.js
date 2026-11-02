@@ -11,6 +11,7 @@
   const urlFilterEnabledInput = document.getElementById("urlFilterEnabled");
   const urlAllowPatternsInput = document.getElementById("urlAllowPatterns");
   const searchModeInputs = Array.from(document.querySelectorAll('input[name="searchMode"]'));
+  const moveFocusAfterEnterInput = document.getElementById("moveFocusAfterEnter");
   const showSuggestionsOnMouseFocusInput = document.getElementById("showSuggestionsOnMouseFocus");
   const metaContactEmail = document.getElementById("metaContactEmail");
   const metaCopyright = document.getElementById("metaCopyright");
@@ -29,6 +30,7 @@
     !(urlFilterEnabledInput instanceof HTMLInputElement) ||
     !(urlAllowPatternsInput instanceof HTMLTextAreaElement) ||
     !(showSuggestionsOnMouseFocusInput instanceof HTMLInputElement) ||
+    !(moveFocusAfterEnterInput instanceof HTMLInputElement) ||
     !(exportButton instanceof HTMLButtonElement) ||
     !(importButton instanceof HTMLButtonElement) ||
     !(importFile instanceof HTMLInputElement) ||
@@ -60,6 +62,7 @@
     urlFilterEnabledInput.disabled = disabled;
     urlAllowPatternsInput.disabled = disabled || !urlFilterEnabledInput.checked;
     showSuggestionsOnMouseFocusInput.disabled = disabled;
+    moveFocusAfterEnterInput.disabled = disabled;
     for (const input of searchModeInputs) {
       input.disabled = disabled;
     }
@@ -72,6 +75,7 @@
     urlFilterEnabledInput.checked = settings.urlFilterEnabled;
     urlAllowPatternsInput.value = settings.urlAllowPatterns;
     showSuggestionsOnMouseFocusInput.checked = settings.showSuggestionsOnMouseFocus;
+    moveFocusAfterEnterInput.checked = settings.moveFocusAfterEnter;
     for (const input of searchModeInputs) {
       input.checked = input.value === settings.searchMode;
     }
@@ -83,6 +87,7 @@
       urlFilterEnabled: urlFilterEnabledInput.checked,
       urlAllowPatterns: urlAllowPatternsInput.value,
       searchMode: searchModeInputs.find((input) => input.checked)?.value,
+      moveFocusAfterEnter: moveFocusAfterEnterInput.checked,
       showSuggestionsOnMouseFocus: showSuggestionsOnMouseFocusInput.checked
     };
   }
@@ -187,6 +192,9 @@
   });
   urlAllowPatternsInput.addEventListener("change", () => {
     saveSetting(STORAGE_KEYS.urlAllowPatterns, urlAllowPatternsInput.value);
+  });
+  moveFocusAfterEnterInput.addEventListener("change", () => {
+    saveSetting(STORAGE_KEYS.moveFocusAfterEnter, moveFocusAfterEnterInput.checked);
   });
   showSuggestionsOnMouseFocusInput.addEventListener("change", () => {
     saveSetting(STORAGE_KEYS.showSuggestionsOnMouseFocus, showSuggestionsOnMouseFocusInput.checked);

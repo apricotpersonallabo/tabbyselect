@@ -28,7 +28,10 @@
     debugLog(`[${traceId}] ${message}`, detail);
   }
 
-  const view = modules.createSuggestionView({ queryLabel: i18n.t("searchQueryLabel") });
+  const view = modules.createSuggestionView({
+    queryLabel: i18n.t("searchQueryLabel"),
+    formatTargetLabel: (name) => i18n.t("suggestionsForField", [name])
+  });
   const pickerController = modules.createPickerController();
   const focusNavigator = modules.createFocusNavigator({
     isDebugEnabled: () => debugLogEnabled,
@@ -67,6 +70,7 @@
       currentUrl = url;
       debugLogEnabled = settings.debugLogEnabled;
       session.setSearchMode(settings.searchMode);
+      session.setMoveFocusAfterEnter(settings.moveFocusAfterEnter);
       session.setShowSuggestionsOnMouseFocus(settings.showSuggestionsOnMouseFocus);
       session.reposition();
       if (active) {

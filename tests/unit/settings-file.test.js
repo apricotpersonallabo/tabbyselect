@@ -5,19 +5,21 @@ const { settingsToToml, parseSettingsToml } = require("../../src/settings-file.j
 test("round trips all portable settings and normalizes URL lines", () => {
   for (const urlFilterEnabled of [true, false]) {
     for (const searchMode of ["prefix", "contains"]) {
-      for (const showSuggestionsOnMouseFocus of [true, false]) {
-        const urls = ['https://example.com/日本語/*', 'https://example.com/"quote"/\\path#hash'];
-        const settings = { urlFilterEnabled, searchMode, showSuggestionsOnMouseFocus,
-          urlAllowPatterns: `  ${urls[0]}  \r\n\n${urls[1]}\n`,
-          manualEnabledOverride: false, debugLogEnabled: true };
-        const toml = settingsToToml(settings);
-        assert.ok(toml.startsWith("# TabbySelect settings\n"));
-        assert.equal(toml.includes("manualEnabledOverride"), false);
-        assert.equal(toml.includes("debugLogEnabled"), false);
-        assert.deepEqual(parseSettingsToml(toml), {
-          urlFilterEnabled, searchMode, showSuggestionsOnMouseFocus,
-          urlAllowPatterns: urls.join("\n")
-        });
+      for (const moveFocusAfterEnter of [true, false]) {
+        for (const showSuggestionsOnMouseFocus of [true, false]) {
+          const urls = ['https://example.com/日本語/*', 'https://example.com/"quote"/\\path#hash'];
+          const settings = { urlFilterEnabled, searchMode, showSuggestionsOnMouseFocus, moveFocusAfterEnter,
+            urlAllowPatterns: `  ${urls[0]}  \r\n\n${urls[1]}\n`,
+            manualEnabledOverride: false, debugLogEnabled: true };
+          const toml = settingsToToml(settings);
+          assert.ok(toml.startsWith("# TabbySelect settings\n"));
+          assert.equal(toml.includes("manualEnabledOverride"), false);
+          assert.equal(toml.includes("debugLogEnabled"), false);
+          assert.deepEqual(parseSettingsToml(toml), {
+            urlFilterEnabled, searchMode, showSuggestionsOnMouseFocus, moveFocusAfterEnter,
+            urlAllowPatterns: urls.join("\n")
+          });
+        }
       }
     }
   }
@@ -28,7 +30,7 @@ test("exports default values and an empty URL list", () => {
   assert.match(toml, /url_allow_patterns = \[\]/);
   assert.deepEqual(parseSettingsToml(toml), {
     urlFilterEnabled: false, urlAllowPatterns: "", searchMode: "contains",
-    showSuggestionsOnMouseFocus: true
+    showSuggestionsOnMouseFocus: true, moveFocusAfterEnter: true
   });
 });
 
@@ -47,6 +49,8 @@ test("rejects malformed, duplicate, unsupported, and empty files", () => {
     "", "# comment only", "unknown = true", '[other]\nsearch_mode = "prefix"',
     "url_filter_enabled = 1", 'url_filter_enabled = "true"',
     "url_filter_enabled = True", "url_filter_enabled = false # inline comment",
+    "move_focus_after_enter = null", 'move_focus_after_enter = "false"',
+    "move_focus_after_enter = 0", "move_focus_after_enter = true\nmove_focus_after_enter = false",
     "show_suggestions_on_mouse_focus = null", "search_mode = prefix",
     'search_mode = "suffix"', "search_mode = 0", "search_mode = true",
     "url_allow_patterns = {}", 'url_allow_patterns = "https://a/*"',
