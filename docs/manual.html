@@ -44,13 +44,17 @@
           <section id="setup" class="manual-section">
             <p class="section-index">01</p>
             <h2 data-i18n="setupTitle">初期設定</h2>
+            <p data-i18n="welcomeInstallText">初回インストール後、新しいタブでWelcomeページが開きます。基本操作を確認し、「設定を開く」または「マニュアルを見る」へ進めます。「閉じる」でWelcomeタブを閉じられます。更新時やブラウザ起動時には自動表示しません。インストール前から開いていたページでは、必要に応じて再読み込みしてください。</p>
             <ol class="instruction-list">
               <li><div><strong data-i18n="setupOneTitle">設定ページを開く</strong><p data-i18n="setupOneText">ツールバーのTabbySelectアイコンをクリックし、「設定ページを開く」を選択します。</p></div></li>
-              <li><div><strong data-i18n="setupTwoTitle">有効URLを指定する</strong><p data-i18n="setupTwoText">URLパターンを1行ずつ入力します。*は任意の文字列に一致します。空欄の場合は、すべてのhttp/https URLが対象です。</p><code>https://example.com/*</code></div></li>
+              <li><div><strong data-i18n="setupTwoTitle">有効URLを指定する</strong><p data-i18n="setupTwoText">「URLフィルターを有効にする」は初期設定でオフです。オンのときのみ、1行ずつ入力したURLパターンに一致するページに対象を制限します。*は任意の文字列に一致します。オフまたは空欄の場合は、すべてのHTTP/HTTPSページが対象です。オフでは入力欄を編集できませんが、保存済みパターンは保持されます。設定変更は開いているページとiframeにも反映されます。既存ユーザーも更新後は、チェックをオンにするまで保存済みパターンを適用しません。</p><code>https://example.com/*</code></div></li>
               <li><div><strong data-i18n="setupSearchTitle">検索方式を選ぶ</strong><p data-i18n="setupSearchText">設定ページの「検索方式」で先頭一致または部分一致（標準）を選びます。Ja は先頭一致で Japan に、pan は部分一致で Japan に一致します。大文字・小文字は区別しません。変更は自動保存され、開いているページとiframeにも反映されます。</p></div></li>
               <li><div><strong data-i18n="setupPickerTitle">候補UIの表示</strong><p data-i18n="setupPickerText">マウスクリック時の候補UI表示は初期設定でオンです。オフにするとマウスクリックではブラウザ標準のリストを使用します。キーボードやタッチ操作では候補UIが表示されます。ページ遷移後、操作するまでは、自動フォーカスやスクリプトによるフォーカスでは開きません。操作後のプログラムによるフォーカスでは開きます。</p></div></li>
               <li><div><strong data-i18n="setupThreeTitle">対象ページでオンにする</strong><p data-i18n="setupThreeText">アイコンを再度クリックし、ポップアップのトグルをオンにします。設定変更は開いているページにも反映されます。</p></div></li>
             </ol>
+            <h3 data-i18n="settingsFileTitle">設定のインポート・エクスポート</h3>
+            <p data-i18n="settingsFileText">設定画面の「エクスポート」で、URLフィルターのON/OFF、URLパターン、検索方式、マウスクリック時の候補表示を tabbyselect-settings.toml に保存できます。フィルターがオフでも保存済みパターンを含めます。「インポート」でファイルを選ぶと、含まれる項目だけを上書きして保存し、開いているページとiframeにも反映します。拡張機能全体のON/OFFとデバッグログ設定は変更しません。</p>
+            <p data-i18n="settingsFileFormatText">書き出した形式のTOMLファイルを読み込めます。値は1行の文字列配列、二重引用符の文字列、true/falseで記述し、空行と行全体のコメントにも対応します。URLパターンの空行と行頭・行末の空白は除去されます。不正な値や重複項目があるファイルは保存しません。</p>
           </section>
 
           <section id="keyboard" class="manual-section">

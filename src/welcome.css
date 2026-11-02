@@ -1,0 +1,15 @@
+.welcome { width: min(100%, 44rem); margin: clamp(0rem, 4vw, 2rem) auto; padding: clamp(1.25rem, 4vw, 2rem); }
+.welcome-hero { display: flex; align-items: center; gap: 1rem; }
+.welcome-hero img { flex-shrink: 0; }
+.welcome h1 { font-size: clamp(1.5rem, 4vw, 2rem); }
+.welcome-steps { margin: 1.5rem 0; padding-left: 1.75rem; }
+.welcome-steps li { padding-left: 0.5rem; margin-top: 1.25rem; }
+.welcome-steps li::marker { color: #0f766e; font-weight: 700; }
+.welcome-steps h2 { margin: 0 0 0.25rem; font-size: 1.125rem; color: #0f172a; }
+.welcome-steps p { margin: 0; color: #4b5563; line-height: 1.6; }
+.welcome-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.625rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb; }
+.welcome-actions button, .welcome-actions a { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #0f766e; border-radius: 0.5rem; padding: 0.625rem 1rem; color: #0f766e; background: #fff; font: inherit; text-decoration: none; cursor: pointer; }
+.welcome-actions .primary { background: #0f766e; color: #fff; }
+.welcome-actions button:hover, .welcome-actions a:hover { background: #f0fdfa; color: #0f766e; }
+.welcome-actions button:focus-visible, .welcome-actions a:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
+@media (max-width: 30rem) { .welcome-hero { align-items: flex-start; } .welcome-hero img { width: 48px; height: 48px; } .welcome-actions { align-items: stretch; flex-direction: column; } }

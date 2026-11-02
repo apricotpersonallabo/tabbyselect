@@ -49,7 +49,7 @@ for (const urlFirst of [true, false]) {
     controller.start();
     assert.equal(urlCallbacks.length, 1);
     const settings = () => storageCallbacks[0]({ ...core.DEFAULT_SETTINGS,
-      urlAllowPatterns: "https://parent.example/*" });
+      urlFilterEnabled: true, urlAllowPatterns: "https://parent.example/*" });
     const url = () => urlCallbacks[0]({ url: "https://parent.example/form" });
     (urlFirst ? url : settings)();
     assert.equal(states.at(-1).active, false);
@@ -64,7 +64,7 @@ test("URL notifications win over an older initial response", () => {
   chromeApi.runtime.onMessage.fire({ type: core.URL_CHANGED_MESSAGE_TYPE,
     url: "https://parent.example/allowed" });
   storageCallbacks[0]({ ...core.DEFAULT_SETTINGS,
-    urlAllowPatterns: "https://parent.example/*" });
+    urlFilterEnabled: true, urlAllowPatterns: "https://parent.example/*" });
   urlCallbacks[0]({ url: "https://blocked.example/" });
   assert.equal(states.at(-1).active, true);
   assert.equal(states.at(-1).url, "https://parent.example/allowed");
@@ -79,7 +79,7 @@ test("setting changes during loading survive the initial storage response", () =
   chromeApi.storage.onChanged.fire({ manualEnabledOverride: { newValue: false } }, "local");
   urlCallbacks[0]({ url: "https://parent.example/" });
   storageCallbacks[0]({ ...core.DEFAULT_SETTINGS,
-    urlAllowPatterns: "https://parent.example/*" });
+    urlFilterEnabled: true, urlAllowPatterns: "https://parent.example/*" });
   assert.equal(states.at(-1).active, false);
   assert.equal(states.at(-1).settings.urlAllowPatterns, "https://parent.example/*");
   chromeApi.storage.onChanged.fire({ manualEnabledOverride: { newValue: true } }, "local");
@@ -197,4 +197,57 @@ test("background resolves the sender's tab rather than its frame URL", () => {
   delete chromeApi.runtime.lastError;
   listener({ type: core.GET_TOP_URL_MESSAGE_TYPE }, {}, receive);
   assert.deepEqual(response, { url: null });
+});
+
+
+test("reacts to URL filter changes without changing saved patterns", () => {
+  const { controller, chromeApi, storageCallbacks, urlCallbacks, states } = setup();
+  controller.start();
+  urlCallbacks[0]({ url: "https://other.example/" });
+  storageCallbacks[0]({ ...core.DEFAULT_SETTINGS,
+    urlAllowPatterns: "https://parent.example/*" });
+  assert.equal(states.at(-1).active, true);
+  chromeApi.storage.onChanged.fire({ urlFilterEnabled: { newValue: true } }, "local");
+  assert.equal(states.at(-1).active, false);
+  chromeApi.storage.onChanged.fire({ urlFilterEnabled: { newValue: false } }, "local");
+  assert.equal(states.at(-1).active, true);
+  assert.equal(states.at(-1).settings.urlAllowPatterns, "https://parent.example/*");
+});
+
+
+test("opens welcome only on first install and always refreshes existing tabs", () => {
+  const opened = [];
+  const errors = [];
+  let refreshed = 0;
+  const chromeApi = {
+    runtime: {
+      onMessage: event(), onInstalled: event(), onStartup: event(),
+      getURL: (file) => `chrome-extension://test/${file}`
+    },
+    tabs: {
+      onActivated: event(), onUpdated: event(),
+      query(_, callback) { refreshed += 1; callback([]); },
+      create(details, callback) { opened.push(details); callback(); }
+    },
+    storage: { onChanged: event() }
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../../src/background.js"), "utf8"), {
+    chrome: chromeApi, TabbySelectCore: core, TabbySelectI18n: {},
+    console: { error: (...args) => errors.push(args) }
+  });
+  chromeApi.runtime.onInstalled.fire({ reason: "install" });
+  assert.equal(refreshed, 1);
+  assert.equal(opened.length, 1);
+  assert.equal(opened[0].url, "chrome-extension://test/welcome.html");
+  for (const reason of ["update", "chrome_update", "shared_module_update"]) {
+    chromeApi.runtime.onInstalled.fire({ reason });
+  }
+  chromeApi.runtime.onStartup.fire();
+  assert.equal(refreshed, 5);
+  assert.equal(opened.length, 1);
+  assert.equal(errors.length, 0);
+  chromeApi.runtime.lastError = { message: "Unable to create tab" };
+  chromeApi.runtime.onInstalled.fire({ reason: "install" });
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0][1], "Unable to create tab");
 });

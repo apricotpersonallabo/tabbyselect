@@ -153,7 +153,7 @@ function unicodePageMarkup() {
 }
 
 async function openUnicodeSearch(page, mode = "prefix") {
-  await setSettings({ searchMode: mode, urlAllowPatterns: "", manualEnabledOverride: true });
+  await setSettings({ searchMode: mode, urlFilterEnabled: true, urlAllowPatterns: "", manualEnabledOverride: true });
   await page.goto(`http://127.0.0.1:${port}/allowed/ime`);
   await page.locator("#unicodeBefore").click();
   await page.locator("#unicodeSelect").focus();
@@ -276,9 +276,279 @@ test.afterAll(async () => {
   }
 });
 
+test("opens a localized welcome tab on installation with settings, manual, and close actions", async () => {
+  const url = `chrome-extension://${extensionId}/welcome.html`;
+  await expect.poll(() => context.pages().filter((page) => page.url() === url).length).toBe(1);
+  const welcome = context.pages().find((page) => page.url() === url);
+  const stored = await worker.evaluate(() => chrome.storage.local.get(null));
+  await expect(welcome).toHaveTitle("Welcome to TabbySelect");
+  await expect(welcome.locator("html")).toHaveAttribute("lang", "en");
+  await expect(welcome.getByRole("heading", { level: 1 })).toHaveText("TabbySelect is ready");
+  await expect(welcome.locator(".welcome-steps li")).toHaveCount(3);
+  await expect(welcome.locator('[data-i18n="welcomeSettingsText"]')).toContainText("You can start using TabbySelect right away");
+  await expect(welcome.getByRole("link", { name: "View the manual" }))
+    .toHaveAttribute("href", "https://apricotpersonallabo.github.io/tabbyselect/manual.html");
+  await welcome.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-welcome.png"), fullPage: true });
+  await welcome.setViewportSize({ width: 360, height: 740 });
+  expect(await welcome.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await welcome.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-welcome-mobile.png"), fullPage: true });
+  const opened = context.waitForEvent("page", {
+    predicate: (page) => page.url().endsWith("/options.html") || page.url() === ""
+  });
+  await welcome.getByRole("button", { name: "Open settings", exact: true }).click();
+  const options = await opened;
+  await expect(options).toHaveURL(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator("#importSettings")).toBeEnabled();
+  expect(await worker.evaluate(() => chrome.storage.local.get(null))).toEqual(stored);
+  await options.close();
+  const closed = welcome.waitForEvent("close");
+  await welcome.getByRole("button", { name: "Close", exact: true }).click();
+  await closed;
+  expect(context.pages().filter((page) => page.url() === url)).toHaveLength(0);
+});
+
+test("exports and restores the four portable settings from a TOML download", async () => {
+  const patterns = '  https://example.com/日本語/*  \n\nhttps://example.org/"quote"/*';
+  await setSettings({ urlFilterEnabled: false, urlAllowPatterns: patterns,
+    searchMode: "prefix", showSuggestionsOnMouseFocus: false,
+    manualEnabledOverride: false, debugLogEnabled: true });
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  const exportButton = options.getByRole("button", { name: "Export", exact: true });
+  await expect(exportButton).toBeEnabled();
+  const downloaded = options.waitForEvent("download");
+  await exportButton.click();
+  const download = await downloaded;
+  expect(download.suggestedFilename()).toBe("tabbyselect-settings.toml");
+  const downloadPath = await download.path();
+  const toml = fs.readFileSync(downloadPath, "utf8");
+  expect(toml).toBe('# TabbySelect settings\nurl_filter_enabled = false\n' +
+    'url_allow_patterns = ["https://example.com/日本語/*","https://example.org/\\"quote\\"/*"]\n' +
+    'search_mode = "prefix"\nshow_suggestions_on_mouse_focus = false\n');
+  await expect(options.locator("#status")).toHaveText("Settings exported.");
+  await options.screenshot({ path: path.join(os.tmpdir(), "tabbyselect-settings-file.png"), fullPage: true });
+  await setSettings({ urlFilterEnabled: true, urlAllowPatterns: "", searchMode: "contains",
+    showSuggestionsOnMouseFocus: true, manualEnabledOverride: true, debugLogEnabled: false });
+  await options.reload();
+  const chooser = options.waitForEvent("filechooser");
+  await options.getByRole("button", { name: "Import", exact: true }).click();
+  await (await chooser).setFiles(downloadPath);
+  await expect(options.locator("#status")).toHaveText("Settings imported and saved.");
+  expect(await worker.evaluate(() => chrome.storage.local.get(null))).toMatchObject({
+    urlFilterEnabled: false, urlAllowPatterns: 'https://example.com/日本語/*\nhttps://example.org/"quote"/*',
+    searchMode: "prefix", showSuggestionsOnMouseFocus: false,
+    manualEnabledOverride: true, debugLogEnabled: false
+  });
+  await expect(options.locator("#urlAllowPatterns")).toBeDisabled();
+  await expect(options.locator("#searchModePrefix")).toBeChecked();
+  await expect(options.locator("#showSuggestionsOnMouseFocus")).not.toBeChecked();
+  await options.reload();
+  await expect(options.locator("#urlFilterEnabled")).not.toBeChecked();
+  await expect(options.locator("#searchModePrefix")).toBeChecked();
+  await options.close();
+});
+
+test("partially imports settings and updates open frames", async () => {
+  const pattern = "https://unrelated.example/*";
+  await setSettings({ urlFilterEnabled: true, urlAllowPatterns: pattern, searchMode: "prefix",
+    showSuggestionsOnMouseFocus: true, manualEnabledOverride: true, debugLogEnabled: false });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/blocked/frames`);
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator("#importSettings")).toBeEnabled();
+  await options.locator("#importFile").setInputFiles({ name: "partial.toml", mimeType: "application/toml",
+    buffer: Buffer.from("url_filter_enabled = false\nmanualEnabledOverride = false\ndebugLogEnabled = true\n") });
+  await expect(options.locator("#status")).toHaveText("Settings imported and saved.");
+  expect(await worker.evaluate(() => chrome.storage.local.get(null))).toMatchObject({
+    urlFilterEnabled: false, urlAllowPatterns: pattern, searchMode: "prefix",
+    showSuggestionsOnMouseFocus: true, manualEnabledOverride: true, debugLogEnabled: false
+  });
+  await page.bringToFront();
+  for (const name of ["same", "cross", "nested", "blank", "srcdoc"]) {
+    await openFrameSuggestion(page.frame({ name }));
+  }
+  await options.close();
+  await page.close();
+});
+
+test("waits for pending autosaves and blocks editing during import", async () => {
+  await setSettings({ urlFilterEnabled: true, urlAllowPatterns: "https://saved.example/*",
+    searchMode: "contains", showSuggestionsOnMouseFocus: true });
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator("#importSettings")).toBeEnabled();
+  await options.evaluate(() => {
+    const original = chrome.storage.local.set.bind(chrome.storage.local);
+    window.settingsWrites = [];
+    chrome.storage.local.set = (patch, callback) => {
+      window.settingsWrites.push(patch);
+      if (window.settingsWrites.length === 1) {
+        window.releaseSave = () => original(patch, callback);
+      } else {
+        original(patch, callback);
+      }
+    };
+  });
+  await options.locator("#showSuggestionsOnMouseFocus").uncheck();
+  await options.locator("#importFile").setInputFiles({ name: "pending.toml", mimeType: "application/toml",
+    buffer: Buffer.from("show_suggestions_on_mouse_focus = true\nsearch_mode = \"prefix\"\n") });
+  for (const selector of ["#exportSettings", "#importSettings", "#urlFilterEnabled",
+    "#urlAllowPatterns", "#searchModePrefix", "#showSuggestionsOnMouseFocus"]) {
+    await expect(options.locator(selector)).toBeDisabled();
+  }
+  expect(await options.evaluate(() => window.settingsWrites)).toEqual([{ showSuggestionsOnMouseFocus: false }]);
+  await options.evaluate(() => window.releaseSave());
+  await expect(options.locator("#status")).toHaveText("Settings imported and saved.");
+  expect(await options.evaluate(() => window.settingsWrites)).toEqual([
+    { showSuggestionsOnMouseFocus: false }, { showSuggestionsOnMouseFocus: true, searchMode: "prefix" }
+  ]);
+  expect(await worker.evaluate(() => chrome.storage.local.get(["showSuggestionsOnMouseFocus", "searchMode"])))
+    .toEqual({ showSuggestionsOnMouseFocus: true, searchMode: "prefix" });
+  await expect(options.locator("#urlAllowPatterns")).toBeEnabled();
+  await options.close();
+});
+
+test("keeps saved settings on invalid imports, cancellation, and storage errors", async () => {
+  await setSettings({ urlFilterEnabled: false, urlAllowPatterns: "https://saved.example/*",
+    searchMode: "contains", showSuggestionsOnMouseFocus: true });
+  const before = await worker.evaluate(() => chrome.storage.local.get(null));
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator("#importSettings")).toBeEnabled();
+  const upload = async (text) => options.locator("#importFile").setInputFiles({
+    name: "settings.toml", mimeType: "application/toml", buffer: Buffer.from(text)
+  });
+  for (const text of ["", "not TOML", "unknown = true", 'search_mode = "prefix"\nurl_filter_enabled = 42',
+    "url_filter_enabled = true\nurl_filter_enabled = false"]) {
+    await upload(text);
+    await expect(options.locator("#status")).toHaveText("Could not import the settings file. Check its contents and try again.");
+    await expect(options.locator("#importFile")).toHaveValue("");
+    expect(await worker.evaluate(() => chrome.storage.local.get(null))).toEqual(before);
+  }
+  await options.locator("#importFile").setInputFiles([]);
+  expect(await worker.evaluate(() => chrome.storage.local.get(null))).toEqual(before);
+  await options.evaluate(() => {
+    window.originalSettingsSet = chrome.storage.local.set;
+    chrome.storage.local.set = () => { throw new Error("Storage unavailable"); };
+  });
+  await upload('search_mode = "prefix"');
+  await expect(options.locator("#status")).toHaveText("Could not import the settings file. Check its contents and try again.");
+  expect(await worker.evaluate(() => chrome.storage.local.get(null))).toEqual(before);
+  await expect(options.locator("#searchModeContains")).toBeChecked();
+  await options.evaluate(() => { chrome.storage.local.set = window.originalSettingsSet; });
+  await upload('search_mode = "prefix"');
+  await expect(options.locator("#status")).toHaveText("Settings imported and saved.");
+  await expect(options.locator("#searchModePrefix")).toBeChecked();
+  await options.evaluate(() => { URL.createObjectURL = () => { throw new Error("Download unavailable"); }; });
+  await options.locator("#exportSettings").click();
+  await expect(options.locator("#status")).toHaveText("Failed to export settings.");
+  await expect(options.locator("#exportSettings")).toBeEnabled();
+  await options.close();
+});
+
+test("defaults URL filtering off and preserves patterns across checkbox changes", async () => {
+  const pattern = "https://saved.example/*";
+  await setSettings({ urlAllowPatterns: pattern, manualEnabledOverride: true });
+  await worker.evaluate(() => chrome.storage.local.remove("urlFilterEnabled"));
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  const checkbox = options.getByRole("checkbox", { name: "Enable URL filter" });
+  const patterns = options.locator("#urlAllowPatterns");
+  await expect(checkbox).toBeEnabled();
+  await expect(checkbox).not.toBeChecked();
+  await expect(patterns).toBeDisabled();
+  await expect(patterns).toHaveValue(pattern);
+  await checkbox.check();
+  await expect(patterns).toBeEnabled();
+  await expect(options.locator("#status")).toHaveText("Settings saved.");
+  await options.reload();
+  await expect(checkbox).toBeChecked();
+  await expect(patterns).toBeEnabled();
+  await checkbox.uncheck();
+  await expect(options.locator("#status")).toHaveText("Settings saved.");
+  await options.reload();
+  await expect(checkbox).not.toBeChecked();
+  await expect(patterns).toBeDisabled();
+  await expect(patterns).toHaveValue(pattern);
+  expect(await worker.evaluate(() => chrome.storage.local.get(["urlFilterEnabled", "urlAllowPatterns"])))
+    .toEqual({ urlFilterEnabled: false, urlAllowPatterns: pattern });
+  await checkbox.check();
+  await expect(patterns).toBeEnabled();
+  await expect(patterns).toHaveValue(pattern);
+  await options.close();
+});
+
+test("synchronizes URL filtering across frames, popup, and toolbar icons", async () => {
+  await setSettings({ urlFilterEnabled: true, urlAllowPatterns: "https://other.example/*",
+    manualEnabledOverride: true });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${port}/blocked/frames`);
+  await page.evaluate(() => {
+    const select = document.createElement("select");
+    select.id = "parentSelect";
+    select.add(new Option("Initial"));
+    select.add(new Option("Target"));
+    document.body.appendChild(select);
+  });
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await page.bringToFront();
+  const tabId = await worker.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    globalThis.originalSetIcon = chrome.action.setIcon;
+    globalThis.testIconPaths = {};
+    chrome.action.setIcon = (details, ...args) => {
+      globalThis.testIconPaths[details.tabId] = details.path[16];
+      return globalThis.originalSetIcon.call(chrome.action, details, ...args);
+    };
+    return tab.id;
+  });
+  try {
+    for (const urlFilterEnabled of [false, true, false]) {
+      await setSettings({ urlFilterEnabled });
+      if (urlFilterEnabled) {
+        await expect(popup.locator("#iconToggleEnabled")).toBeDisabled();
+        await expect(popup.locator("#iconToggleEnabled")).not.toBeChecked();
+        await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
+      } else {
+        await expect(popup.locator("#iconToggleEnabled")).toBeEnabled();
+        await expect(popup.locator("#iconToggleEnabled")).toBeChecked();
+        await page.locator("#parentBefore").click();
+        await page.locator("#parentSelect").focus();
+        await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+      }
+      await expect.poll(() => worker.evaluate((id) => globalThis.testIconPaths[id], tabId))
+        .toBe(urlFilterEnabled ? "icons/off-16.png" : "icons/on-16.png");
+      for (const name of ["same", "cross", "nested", "blank", "srcdoc"]) {
+        const frame = page.frame({ name });
+        if (urlFilterEnabled) {
+          await expect(frame.locator("[data-tabby-select-host]")).toHaveCount(0);
+        } else {
+          await openFrameSuggestion(frame);
+        }
+      }
+    }
+    await setSettings({ manualEnabledOverride: false });
+    await expect(popup.locator("#iconToggleEnabled")).not.toBeChecked();
+    await expect(popup.locator("#iconToggleEnabled")).toBeEnabled();
+    for (const name of ["same", "cross", "nested", "blank", "srcdoc"]) {
+      await expect(page.frame({ name }).locator("[data-tabby-select-host]")).toHaveCount(0);
+    }
+  } finally {
+    await worker.evaluate(() => {
+      chrome.action.setIcon = globalThis.originalSetIcon;
+      delete globalThis.originalSetIcon;
+      delete globalThis.testIconPaths;
+    });
+    await popup.close();
+    await page.close();
+  }
+});
+
 test("opens suggestions immediately on keyboard focus and reopens after Escape", async () => {
   await setSettings({ searchMode: "prefix", showSuggestionsOnMouseFocus: true,
-    manualEnabledOverride: true, urlAllowPatterns: "" });
+    manualEnabledOverride: true, urlFilterEnabled: true, urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   await page.locator("#searchBefore").click();
@@ -303,7 +573,7 @@ test("opens suggestions immediately on keyboard focus and reopens after Escape",
 
 test("allows native mouse select when setting is off; clicks reopen when on", async () => {
   await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
-    urlAllowPatterns: "" });
+    urlFilterEnabled: true, urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");
@@ -326,7 +596,7 @@ test("allows native mouse select when setting is off; clicks reopen when on", as
 
 test("clicking suggestions commits once and preserves selection on open", async () => {
   await setSettings({ showSuggestionsOnMouseFocus: true, manualEnabledOverride: true,
-    urlAllowPatterns: "" });
+    urlFilterEnabled: true, urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");
@@ -341,7 +611,7 @@ test("clicking suggestions commits once and preserves selection on open", async 
 
 test("keeps programmatic focus after user interaction independent of mouse preference", async () => {
   await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
-    urlAllowPatterns: "" });
+    urlFilterEnabled: true, urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");
@@ -354,7 +624,7 @@ test("keeps programmatic focus after user interaction independent of mouse prefe
 
 test("opens on a first real touch even when mouse suggestions are disabled", async () => {
   await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
-    urlAllowPatterns: "", debugLogEnabled: true });
+    urlFilterEnabled: true, urlAllowPatterns: "", debugLogEnabled: true });
   const page = await context.newPage();
   const ready = page.waitForEvent("console", {
     predicate: (message) => message.text().includes("feature runtime enabled")
@@ -375,7 +645,7 @@ test("opens on a first real touch even when mouse suggestions are disabled", asy
 
 test("does not reopen on option, setting, or window events alone", async () => {
   await setSettings({ showSuggestionsOnMouseFocus: true, searchMode: "prefix",
-    manualEnabledOverride: true, urlAllowPatterns: "" });
+    manualEnabledOverride: true, urlFilterEnabled: true, urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");
@@ -400,7 +670,7 @@ test("does not reopen on option, setting, or window events alone", async () => {
 
 test("honors mouse toggle for clicks on labels associated with selects", async () => {
   await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
-    urlAllowPatterns: "" });
+    urlFilterEnabled: true, urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   await page.evaluate(() => {
@@ -439,7 +709,7 @@ test("defaults unsaved mouse preference to enabled in settings UI", async () => 
 
 for (const showSuggestionsOnMouseFocus of [true, false]) {
   test(`does not open for autofocus before user interaction (mouse: ${showSuggestionsOnMouseFocus})`, async () => {
-    await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "",
+    await setSettings({ manualEnabledOverride: true, urlFilterEnabled: true, urlAllowPatterns: "",
       showSuggestionsOnMouseFocus, debugLogEnabled: true });
     const page = await context.newPage();
     const ready = page.waitForEvent("console", {
@@ -464,7 +734,7 @@ for (const showSuggestionsOnMouseFocus of [true, false]) {
   });
 
   test(`does not open for delayed programmatic focus before user interaction (mouse: ${showSuggestionsOnMouseFocus})`, async () => {
-    await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "",
+    await setSettings({ manualEnabledOverride: true, urlFilterEnabled: true, urlAllowPatterns: "",
       showSuggestionsOnMouseFocus, searchMode: "prefix", debugLogEnabled: true });
     const page = await context.newPage();
     const ready = page.waitForEvent("console", {
@@ -500,7 +770,7 @@ for (const showSuggestionsOnMouseFocus of [true, false]) {
 }
 
 test("resets user interaction on SPA navigation without reopening for focus", async () => {
-  await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "",
+  await setSettings({ manualEnabledOverride: true, urlFilterEnabled: true, urlAllowPatterns: "",
     showSuggestionsOnMouseFocus: true, debugLogEnabled: true });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
@@ -526,7 +796,7 @@ test("resets user interaction on SPA navigation without reopening for focus", as
 });
 
 test("enabling the extension alone does not reopen a focused select", async () => {
-  await setSettings({ manualEnabledOverride: false, urlAllowPatterns: "" });
+  await setSettings({ manualEnabledOverride: false, urlFilterEnabled: true, urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/autofocus`);
   await expect(page.locator("#autoSelect")).toBeFocused();
@@ -540,7 +810,7 @@ test("enabling the extension alone does not reopen a focused select", async () =
 });
 
 test("skips disabled, multiple, and one-option selects on focus", async () => {
-  await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "" });
+  await setSettings({ manualEnabledOverride: true, urlFilterEnabled: true, urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/autofocus`);
   await page.keyboard.press("Escape");
@@ -588,7 +858,7 @@ test("uses contains matching when the search mode has not been saved", async () 
 test("supports keyboard selection in all frame types using the top URL", async () => {
   await setSettings({
     searchMode: "prefix",
-    urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
+    urlFilterEnabled: true, urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
     manualEnabledOverride: true
   });
   const page = await context.newPage();
@@ -654,7 +924,7 @@ test("supports keyboard selection in all frame types using the top URL", async (
 
 test("keeps frames synchronized through SPA navigation, settings, and reload", async () => {
   await setSettings({
-    urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
+    urlFilterEnabled: true, urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
     manualEnabledOverride: true
   });
   const page = await context.newPage();
@@ -693,7 +963,7 @@ test("keeps frames synchronized through SPA navigation, settings, and reload", a
   for (const name of names) {
     await openFrameSuggestion(page.frame({ name }));
   }
-  await setSettings({ urlAllowPatterns: "https://unrelated.example/*" });
+  await setSettings({ urlFilterEnabled: true, urlAllowPatterns: "https://unrelated.example/*" });
   for (const name of names) {
     await expect(page.frame({ name }).locator("[data-tabby-select-host]")).toHaveCount(0);
   }
@@ -704,7 +974,7 @@ test("loads all extension contexts and controls the feature lifecycle", async ()
   const allowedPattern = `http://127.0.0.1:${port}/allowed/*`;
   await setSettings({
     debugLogEnabled: false,
-    urlAllowPatterns: allowedPattern,
+    urlFilterEnabled: true, urlAllowPatterns: allowedPattern,
     manualEnabledOverride: true
   });
   expect(worker.url()).toBe(`chrome-extension://${extensionId}/background.js`);
@@ -788,7 +1058,7 @@ test("loads all extension contexts and controls the feature lifecycle", async ()
 
 test("runs the installed extension in the support site playground", async () => {
   await setSettings({
-    urlAllowPatterns: "",
+    urlFilterEnabled: true, urlAllowPatterns: "",
     manualEnabledOverride: true
   });
   const page = await context.newPage();
@@ -818,12 +1088,21 @@ test("runs the installed extension in the support site playground", async () => 
 test("describes the mouse focus setting in both manual languages", async () => {
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/support/manual.html`);
+  await expect(page.locator('[data-i18n="welcomeInstallText"]')).toContainText("first installation");
+  await expect(page.locator('[data-i18n="settingsFileTitle"]')).toHaveText("Settings import / export");
+  await expect(page.locator('[data-i18n="settingsFileText"]')).toContainText("tabbyselect-settings.toml");
+  await expect(page.locator('[data-i18n="setupTwoText"]')).toContainText("Enable URL filter is off by default");
   await expect(page.locator('[data-i18n="setupPickerTitle"]')).toHaveText("Suggestion display");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
     .toContainText("on by default");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
     .toContainText("until you interact with the page");
   await page.getByRole("button", { name: "Switch to Japanese" }).click();
+  await expect(page.locator('[data-i18n="welcomeInstallText"]')).toContainText("初回インストール後");
+  await expect(page.locator('[data-i18n="settingsFileTitle"]')).toHaveText("設定のインポート・エクスポート");
+  await expect(page.locator('[data-i18n="settingsFileText"]')).toContainText("含まれる項目だけを上書き");
+  await expect(page.locator('[data-i18n="setupTwoText"]')).toContainText("URLフィルターを有効にする");
+  await expect(page.locator('[data-i18n="setupTwoText"]')).toContainText("初期設定でオフ");
   await expect(page.locator('[data-i18n="setupPickerTitle"]')).toHaveText("候補UIの表示");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
     .toContainText("初期設定でオン");
@@ -848,7 +1127,7 @@ test("publishes the privacy policy in Japanese and English", async () => {
 
 test("preserves keyboard selection and light-DOM focus behavior", async () => {
   await setSettings({
-    urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
+    urlFilterEnabled: true, urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
     manualEnabledOverride: true
   });
   const page = await context.newPage();
@@ -944,7 +1223,7 @@ test("preserves keyboard selection and light-DOM focus behavior", async () => {
 
 test("handles empty and disabled options without bypassing native constraints", async () => {
   await setSettings({
-    urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
+    urlFilterEnabled: true, urlAllowPatterns: `http://127.0.0.1:${port}/allowed/*`,
     manualEnabledOverride: true
   });
   const page = await context.newPage();
@@ -1037,7 +1316,7 @@ test("renders the popup and URL settings", async () => {
 
 test("saves and reloads the search mode without overwriting other settings", async () => {
   const allowedPattern = `http://127.0.0.1:${port}/allowed/*`;
-  await setSettings({ urlAllowPatterns: allowedPattern, manualEnabledOverride: true });
+  await setSettings({ urlFilterEnabled: true, urlAllowPatterns: allowedPattern, manualEnabledOverride: true });
   await worker.evaluate(() => chrome.storage.local.remove("searchMode"));
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
@@ -1068,7 +1347,7 @@ test("saves and reloads the search mode without overwriting other settings", asy
 });
 
 test("updates an active search without committing and preserves keyboard selection", async () => {
-  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  await setSettings({ searchMode: "prefix", urlFilterEnabled: true, urlAllowPatterns: "", manualEnabledOverride: true });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");
@@ -1131,7 +1410,7 @@ test("updates an active search without committing and preserves keyboard selecti
 });
 
 test("applies search mode changes to all frame types", async () => {
-  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  await setSettings({ searchMode: "prefix", urlFilterEnabled: true, urlAllowPatterns: "", manualEnabledOverride: true });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
   for (const name of ["same", "cross", "nested", "blank", "srcdoc"]) {
@@ -1337,7 +1616,7 @@ test("preserves mouse interaction and cleans up focused composition sessions", a
 });
 
 test("supports Japanese IME composition inside all supported frame types", async () => {
-  await setSettings({ searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  await setSettings({ searchMode: "prefix", urlFilterEnabled: true, urlAllowPatterns: "", manualEnabledOverride: true });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/frames`);
   const cdp = await context.newCDPSession(page);
@@ -1367,7 +1646,7 @@ test("supports Japanese IME composition inside all supported frame types", async
 const selectSizeAttributes = [null, "", "0", "1", "2", "5", "100", "-1", "invalid", "4294967295"];
 
 test("searches and confirms single selects independently of their size", async () => {
-  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlAllowPatterns: "", manualEnabledOverride: true });
+  await setSettings({ switchFromPickerOnKeydown: false, searchMode: "prefix", urlFilterEnabled: true, urlAllowPatterns: "", manualEnabledOverride: true });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");

@@ -115,7 +115,9 @@ test("every referenced message key exists in the English fallback catalog", () =
     "popup.html",
     "popup.js",
     "options.html",
-    "options.js"
+    "options.js",
+    "welcome.html",
+    "welcome.js"
   ];
   const referencedKeys = new Set();
 

@@ -28,3 +28,9 @@ ul.description { padding-left: 1.4em; }
 .manual-link a { color: #245dcc; text-decoration-thickness: 1px; text-underline-offset: 2px; }
 .manual-link a:focus-visible { outline: 2px solid #7aa2ff; outline-offset: 3px; border-radius: 2px; }
 @media (max-width: 30rem) { label { align-items: flex-start; } }
+
+.settings-file-actions { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 0.75rem; }
+.settings-file-actions button { border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.625rem 1rem; background: #fff; color: #0f172a; font: inherit; cursor: pointer; }
+.settings-file-actions button:hover:enabled { border-color: #0f766e; background: #f0fdfa; }
+.settings-file-actions button:disabled { opacity: 0.5; cursor: default; }
+.settings-file-actions button:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }

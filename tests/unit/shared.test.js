@@ -13,6 +13,7 @@ test("normalizes settings with stable defaults", () => {
     {
       debugLogEnabled: true,
       urlAllowPatterns: "",
+      urlFilterEnabled: false,
       manualEnabledOverride: false,
       searchMode: "contains",
       showSuggestionsOnMouseFocus: true
@@ -93,6 +94,7 @@ test("combines URL matching and the manual override", () => {
   const settings = {
     debugLogEnabled: false,
     urlAllowPatterns: "https://example.com/*",
+    urlFilterEnabled: true,
     manualEnabledOverride: true
   };
   assert.equal(core.isEnabledForUrl("https://example.com/form", settings), true);
@@ -141,4 +143,32 @@ test("loads and normalizes metadata through an injected fetcher", async () => {
     }, "missing"),
     core.DEFAULT_METADATA
   );
+});
+
+
+test("URL filter defaults off even with saved patterns and only accepts true", () => {
+  for (const urlFilterEnabled of [undefined, null, false, 0, 1, "true", "false"]) {
+    const settings = { urlFilterEnabled, urlAllowPatterns: "https://allowed.example/*" };
+    assert.equal(core.normalizeSettings(settings).urlFilterEnabled, false);
+    assert.equal(core.isEnabledForUrl("https://other.example/", settings), true);
+  }
+});
+
+test("URL filter combines patterns, supported schemes, and manual state", () => {
+  for (const urlFilterEnabled of [true, false]) {
+    for (const urlAllowPatterns of ["", "https://allowed.example/*"]) {
+      const settings = { urlFilterEnabled, urlAllowPatterns };
+      assert.equal(core.isEnabledForUrl("https://allowed.example/form", settings), true);
+      assert.equal(core.isUrlAllowedForSettings("https://other.example/", settings),
+        !urlFilterEnabled || !urlAllowPatterns);
+      assert.equal(core.isEnabledForUrl("https://other.example/", settings),
+        !urlFilterEnabled || !urlAllowPatterns);
+      assert.equal(core.isEnabledForUrl("https://allowed.example/",
+        { ...settings, manualEnabledOverride: false }), false);
+      for (const url of [null, "", "file:///tmp/form.html", "chrome://extensions"]) {
+        assert.equal(core.isUrlAllowedForSettings(url, settings), false);
+        assert.equal(core.isEnabledForUrl(url, settings), false);
+      }
+    }
+  }
 });

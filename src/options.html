@@ -20,11 +20,15 @@
       <section class="section" aria-labelledby="url-settings-title">
         <h3 id="url-settings-title" class="section-title" data-i18n="urlSettingsTitle">Enabled URL settings</h3>
 
-        <p class="description" data-i18n="urlDescription">
-          Enable the extension only on pages matching the patterns below. Enter one pattern per line; * matches any text. Leave this empty to enable the extension on all URLs.
+        <label class="search-mode" for="urlFilterEnabled">
+          <input id="urlFilterEnabled" type="checkbox" aria-describedby="url-description" disabled />
+          <span data-i18n="urlFilterEnabled">Enable URL filter</span>
+        </label>
+        <p id="url-description" class="description" data-i18n="urlDescription">
+          The URL filter is off by default. Turn it on to restrict the extension to matching pages. Enter one pattern per line; * matches any text. When off or empty, all HTTP/HTTPS pages are eligible. Saved patterns are kept while off.
         </p>
 
-        <textarea id="urlAllowPatterns" data-i18n-placeholder="urlPlaceholder" placeholder="Example:
+        <textarea id="urlAllowPatterns" disabled data-i18n-placeholder="urlPlaceholder" placeholder="Example:
 https://example.com/*
 https://*.example.org/forms/*"></textarea>
       </section>
@@ -48,10 +52,20 @@ https://*.example.org/forms/*"></textarea>
       <section class="section" aria-labelledby="suggestion-settings-title">
         <h3 id="suggestion-settings-title" class="section-title" data-i18n="suggestionSettingsTitle">Suggestion display</h3>
         <label class="search-mode" for="showSuggestionsOnMouseFocus">
-          <input id="showSuggestionsOnMouseFocus" type="checkbox" aria-describedby="mouse-focus-description" />
+          <input id="showSuggestionsOnMouseFocus" type="checkbox" disabled aria-describedby="mouse-focus-description" />
           <span data-i18n="showSuggestionsOnMouseFocus">Show suggestions when clicking a select (default on)</span>
         </label>
         <p id="mouse-focus-description" class="description" data-i18n="mouseFocusDescription">Keyboard focus always opens search. Turn this off to preserve the browser's native select menu on mouse clicks.</p>
+      </section>
+
+      <section class="section" aria-labelledby="settings-file-title">
+        <h3 id="settings-file-title" class="section-title" data-i18n="settingsFileTitle">Settings import / export</h3>
+        <p class="description" data-i18n="settingsFileDescription">Export these settings to a TOML file or import them from a file. Importing updates only the included settings. The extension's overall enabled state and debug logging are unchanged.</p>
+        <div class="settings-file-actions">
+          <button id="exportSettings" type="button" data-i18n="settingsExport" disabled>Export</button>
+          <button id="importSettings" type="button" data-i18n="settingsImport" disabled>Import</button>
+          <input id="importFile" type="file" accept=".toml,application/toml,text/plain" hidden disabled />
+        </div>
       </section>
 
       <div id="status" class="status" aria-live="polite"></div>
@@ -66,6 +80,7 @@ https://*.example.org/forms/*"></textarea>
 
   <script src="shared.js"></script>
   <script src="i18n.js"></script>
+  <script src="settings-file.js"></script>
   <script src="options.js"></script>
 </body>
 

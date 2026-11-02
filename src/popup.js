@@ -84,7 +84,7 @@
           }
 
           const settings = core.normalizeSettings(items);
-          const urlMatched = core.isUrlAllowed(currentUrl, settings.urlAllowPatterns);
+          const urlMatched = core.isUrlAllowedForSettings(currentUrl, settings);
           renderState(currentUrl, urlMatched, settings.manualEnabledOverride);
           setStatus("");
         }
@@ -124,6 +124,7 @@
 
     if (
       !changes[STORAGE_KEYS.manualEnabledOverride] &&
+      !changes[STORAGE_KEYS.urlFilterEnabled] &&
       !changes[STORAGE_KEYS.urlAllowPatterns]
     ) {
       return;

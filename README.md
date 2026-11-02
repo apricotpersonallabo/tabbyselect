@@ -6,6 +6,8 @@ TabbySelect is a Manifest V3 browser extension for Chrome, Microsoft Edge, and F
 
 ## Install
 
+After the first installation, a welcome page opens in a new tab with basic instructions, Open settings, View the manual, and Close actions. It does not open automatically on updates or browser startup. Reload pages that were open before installation if needed.
+
 Development requires Node.js 24 or later.
 
 ```sh
@@ -70,6 +72,20 @@ Configure the `browser-stores` GitHub Environment before submitting:
 If only one store fails, rerun the workflow for that store with the same version.
 
 ## User manual
+
+In **Enabled URL settings**, turn on **Enable URL filter** to apply the saved URL patterns. The checkbox defaults to off for new and existing users. While off, all HTTP/HTTPS pages are eligible and the pattern field is disabled; saved patterns are retained. With the filter on, an empty pattern list also allows all HTTP/HTTPS pages. Changes apply to open pages and their iframes. The popup enable/disable toggle still controls whether the extension runs.
+
+Use **Export** in the settings page to download `tabbyselect-settings.toml`, and **Import** to restore settings from a file. The file includes URL filtering, URL patterns (even while the filter is off), search mode, and mouse-click suggestions. Importing updates only the included settings and applies them to open pages and iframes; the overall extension enabled state and debug logging are unchanged. Invalid values or duplicate settings reject the file without changing saved settings.
+
+The supported TOML format uses single-line string arrays, double-quoted strings, booleans, blank lines, and whole-line comments. URL pattern whitespace and empty lines are removed:
+
+```toml
+# TabbySelect settings
+url_filter_enabled = false
+url_allow_patterns = ["https://example.com/*"]
+search_mode = "contains"
+show_suggestions_on_mouse_focus = true
+```
 
 In the settings page, choose **Prefix match** or **Contains match** (default). For example, `Ja` matches `Japan` in prefix mode, while `pan` matches it in contains mode. Both modes ignore case and trim leading and trailing whitespace. Changes are saved automatically and apply to open pages and their iframes.
 

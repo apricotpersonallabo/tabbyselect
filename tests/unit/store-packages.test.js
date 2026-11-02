@@ -96,7 +96,11 @@ test("builds strict Chromium and Firefox store packages", async (context) => {
       "popup.css",
       "popup.html",
       "popup.js",
-      "shared.js"
+      "settings-file.js",
+      "shared.js",
+      "welcome.css",
+      "welcome.html",
+      "welcome.js"
     ]
   );
   assert.ok(chromiumFiles.includes("_locales/en/messages.json"));
@@ -120,6 +124,8 @@ test("builds strict Chromium and Firefox store packages", async (context) => {
   await assertLocalHtmlResourcesExist(result.chromiumRoot, "options.html");
   await assertLocalHtmlResourcesExist(result.firefoxRoot, "popup.html");
   await assertLocalHtmlResourcesExist(result.firefoxRoot, "options.html");
+  await assertLocalHtmlResourcesExist(result.chromiumRoot, "welcome.html");
+  await assertLocalHtmlResourcesExist(result.firefoxRoot, "welcome.html");
 });
 
 test("rejects missing, malformed, and unsafe package targets", async () => {

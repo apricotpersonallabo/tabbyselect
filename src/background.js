@@ -144,6 +144,7 @@ if (typeof importScripts === "function") {
     }
 
     if (
+      !changes[STORAGE_KEYS.urlFilterEnabled] &&
       !changes[STORAGE_KEYS.urlAllowPatterns] &&
       !changes[STORAGE_KEYS.manualEnabledOverride]
     ) {
@@ -153,8 +154,15 @@ if (typeof importScripts === "function") {
     refreshAllTabs();
   });
 
-  chrome.runtime.onInstalled.addListener(() => {
+  chrome.runtime.onInstalled.addListener((details) => {
     refreshAllTabs();
+    if (details.reason === "install") {
+      chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Failed to open the welcome page:", chrome.runtime.lastError.message);
+        }
+      });
+    }
   });
 
   chrome.runtime.onStartup.addListener(() => {

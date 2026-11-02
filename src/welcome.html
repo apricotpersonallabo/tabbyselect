@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="welcomePageTitle">Welcome to TabbySelect</title>
+  <link rel="stylesheet" href="options.css" />
+  <link rel="stylesheet" href="welcome.css" />
+</head>
+<body>
+  <main class="panel welcome">
+    <header class="welcome-hero">
+      <img src="icons/on-128.png" width="64" height="64" alt="" />
+      <div>
+        <h1 data-i18n="welcomeHeading">TabbySelect is ready</h1>
+        <p class="description" data-i18n="welcomeIntro">Find what you need in a long list by typing a few letters.</p>
+      </div>
+    </header>
+    <ol class="welcome-steps">
+      <li>
+        <h2 data-i18n="welcomeFocusTitle">Open a list of choices</h2>
+        <p data-i18n="welcomeFocusText">Click a field with a list of choices on a web page to open search. You can also use the Tab key to reach it. If it does not work on a page you already had open, reload the page.</p>
+      </li>
+      <li>
+        <h2 data-i18n="welcomeSearchTitle">Type what you are looking for</h2>
+        <p data-i18n="welcomeSearchText">Type a few letters from the item you want to narrow the choices. For example, typing “pan” can find “Japan”.</p>
+      </li>
+      <li>
+        <h2 data-i18n="welcomeConfirmTitle">Choose and confirm</h2>
+        <p data-i18n="welcomeConfirmText">Use the arrow keys to choose an item, then press Enter or Tab to confirm. Press Esc to clear what you typed or close the list.</p>
+      </li>
+    </ol>
+    <p class="description" data-i18n="welcomeSettingsText">You can start using TabbySelect right away. Choose Open settings to change which pages it works on or what happens when you click. You can also save your settings to a file and load them again later.</p>
+    <div class="welcome-actions">
+      <button id="settingsButton" type="button" class="primary" data-i18n="openOptions">Open settings</button>
+      <a href="https://apricotpersonallabo.github.io/tabbyselect/manual.html" target="_blank" rel="noopener noreferrer" data-i18n="welcomeViewManual">View the manual</a>
+      <button id="closeButton" type="button" data-i18n="welcomeClose">Close</button>
+    </div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </main>
+  <script src="i18n.js"></script>
+  <script src="welcome.js"></script>
+</body>
+</html>

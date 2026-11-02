@@ -12,6 +12,7 @@
   const STORAGE_KEYS = Object.freeze({
     debugLogEnabled: "debugLogEnabled",
     urlAllowPatterns: "urlAllowPatterns",
+    urlFilterEnabled: "urlFilterEnabled",
     manualEnabledOverride: "manualEnabledOverride",
     searchMode: "searchMode",
     showSuggestionsOnMouseFocus: "showSuggestionsOnMouseFocus"
@@ -19,6 +20,7 @@
   const DEFAULT_SETTINGS = Object.freeze({
     debugLogEnabled: false,
     urlAllowPatterns: "",
+    urlFilterEnabled: false,
     manualEnabledOverride: true,
     searchMode: "contains",
     showSuggestionsOnMouseFocus: true
@@ -52,6 +54,7 @@
     const input = value && typeof value === "object" ? value : {};
     return {
       debugLogEnabled: Boolean(input[STORAGE_KEYS.debugLogEnabled]),
+      urlFilterEnabled: input[STORAGE_KEYS.urlFilterEnabled] === true,
       urlAllowPatterns:
         typeof input[STORAGE_KEYS.urlAllowPatterns] === "string"
           ? input[STORAGE_KEYS.urlAllowPatterns]
@@ -142,11 +145,16 @@
     );
   }
 
+  function isUrlAllowedForSettings(url, settings) {
+    const normalized = normalizeSettings(settings);
+    return isUrlAllowed(url, normalized.urlFilterEnabled ? normalized.urlAllowPatterns : "");
+  }
+
   function isEnabledForUrl(url, settings) {
     const normalized = normalizeSettings(settings);
     return (
       normalized.manualEnabledOverride &&
-      isUrlAllowed(url, normalized.urlAllowPatterns)
+      isUrlAllowedForSettings(url, normalized)
     );
   }
 
@@ -167,6 +175,7 @@
     parseUrlPatterns,
     isSupportedUrl,
     isUrlAllowed,
+    isUrlAllowedForSettings,
     isEnabledForUrl
   });
 });

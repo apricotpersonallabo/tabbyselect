@@ -24,7 +24,11 @@ export const RUNTIME_ENTRIES = Object.freeze([
   "popup.css",
   "popup.html",
   "popup.js",
-  "shared.js"
+  "shared.js",
+  "settings-file.js",
+  "welcome.html",
+  "welcome.css",
+  "welcome.js"
 ]);
 
 const FIREFOX_BACKGROUND_SCRIPTS = Object.freeze([
