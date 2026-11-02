@@ -1,8 +1,8 @@
 # TabbySelect ストア提出メモ
 
-最終確認日: 2026-09-23
+最終確認日: 2026-11-02
 
-Chrome Web Store、Microsoft Edge Add-ons、Firefox Add-ons (AMO) の申請画面へ転記するためのメモ。文面はバージョン `1.1.0` の実装を基準とする。
+Chrome Web Store、Microsoft Edge Add-ons、Firefox Add-ons (AMO) の申請画面へ転記するためのメモ。文面はバージョン `1.1.5` の実装を基準とする。
 
 ## 提出前チェック
 
@@ -13,7 +13,7 @@ Chrome Web Store、Microsoft Edge Add-ons、Firefox Add-ons (AMO) の申請画�
 - `[x]` Chrome用1280 x 800スクリーンショットを作成
 - `[x]` Chrome用128 x 128アイコンと440 x 280プロモーション画像を作成
 - `[x]` Edge掲載用300 x 300ロゴを作成（各掲載言語で同じロゴを使用可能）
-- `[x]` ストアへ提出するバージョンと `src/manifest.json` の `version` を `1.1.0` で一致
+- `[x]` ストアへ提出するバージョンと `src/manifest.json` の `version` を `1.1.5` で一致
 - `[x]` `main`をGitHubへpushし、GitHub Pagesの3 URLがHTTP 200になることを確認
 - `[ ]` 各ストア管理画面へ掲載文、画像、プライバシー回答を登録
 
@@ -24,7 +24,7 @@ Chrome Web Store、Microsoft Edge Add-ons、Firefox Add-ons (AMO) の申請画�
 | 製品名（英語） | TabbySelect |
 | 製品名（日本語） | TabbySelect |
 | ブランド名 | TabbySelect |
-| バージョン | 1.1.0 |
+| バージョン | 1.1.5 |
 | 種別 | Browser extension / ブラウザ拡張機能 |
 | カテゴリ（Chrome / Edge） | Productivity / 仕事効率化 |
 | カテゴリ（Firefox） | Other (`other`) |

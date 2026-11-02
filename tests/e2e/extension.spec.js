@@ -339,21 +339,38 @@ test("clicking suggestions commits once and preserves selection on open", async 
   await page.close();
 });
 
-test("keeps programmatic and touch focus independent of mouse preference", async () => {
+test("keeps programmatic focus after user interaction independent of mouse preference", async () => {
   await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
     urlAllowPatterns: "" });
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");
   const input = page.locator("[data-tabby-select-host] .query");
+  await page.locator("#searchBefore").click();
   await select.focus();
   await expect(input).toBeFocused();
-  await page.keyboard.press("Escape");
-  await page.locator("#searchBefore").focus();
-  await select.dispatchEvent("pointerdown", { pointerType: "touch", button: 0,
-    bubbles: true, cancelable: true });
-  await expect(input).toBeFocused();
   await page.close();
+});
+
+test("opens on a first real touch even when mouse suggestions are disabled", async () => {
+  await setSettings({ showSuggestionsOnMouseFocus: false, manualEnabledOverride: true,
+    urlAllowPatterns: "", debugLogEnabled: true });
+  const page = await context.newPage();
+  const ready = page.waitForEvent("console", {
+    predicate: (message) => message.text().includes("feature runtime enabled")
+  });
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  await ready;
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+  const bounds = await page.locator("#searchSelect").boundingBox();
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart",
+    touchPoints: [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
+  await cdp.detach();
+  await page.close();
+  await setSettings({ debugLogEnabled: false });
 });
 
 test("does not reopen on option, setting, or window events alone", async () => {
@@ -363,6 +380,7 @@ test("does not reopen on option, setting, or window events alone", async () => {
   await page.goto(`http://127.0.0.1:${port}/allowed/search`);
   const select = page.locator("#searchSelect");
   const root = page.locator("[data-tabby-select-host] .root");
+  await page.locator("#searchBefore").click();
   await select.focus();
   await expect(root).toBeVisible();
   await page.keyboard.press("Escape");
@@ -419,14 +437,92 @@ test("defaults unsaved mouse preference to enabled in settings UI", async () => 
   await page.close();
 });
 
-test("opens for autofocus present before the extension initializes", async () => {
+for (const showSuggestionsOnMouseFocus of [true, false]) {
+  test(`does not open for autofocus before user interaction (mouse: ${showSuggestionsOnMouseFocus})`, async () => {
+    await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "",
+      showSuggestionsOnMouseFocus, debugLogEnabled: true });
+    const page = await context.newPage();
+    const ready = page.waitForEvent("console", {
+      predicate: (message) => message.text().includes("feature runtime enabled")
+    });
+    await page.goto(`http://127.0.0.1:${port}/allowed/autofocus`);
+    await ready;
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await expect(page.locator("#autoSelect")).toBeFocused();
+    await expect(page.locator("#autoSelect")).toHaveJSProperty("selectedIndex", 0);
+    await page.keyboard.press("b");
+    await expect(page.locator("[data-tabby-select-host] .query")).toHaveValue("b");
+    const reloaded = page.waitForEvent("console", {
+      predicate: (message) => message.text().includes("feature runtime enabled")
+    });
+    await page.reload();
+    await reloaded;
+    await expect(page.locator("[data-tabby-select-host] .root")).toBeHidden();
+    await expect(page.locator("#autoSelect")).toBeFocused();
+    await page.close();
+    await setSettings({ debugLogEnabled: false });
+  });
+
+  test(`does not open for delayed programmatic focus before user interaction (mouse: ${showSuggestionsOnMouseFocus})`, async () => {
+    await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "",
+      showSuggestionsOnMouseFocus, searchMode: "prefix", debugLogEnabled: true });
+    const page = await context.newPage();
+    const ready = page.waitForEvent("console", {
+      predicate: (message) => message.text().includes("feature runtime enabled")
+    });
+    await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+    await ready;
+    const select = page.locator("#searchSelect");
+    const root = page.locator("[data-tabby-select-host] .root");
+    await select.focus();
+    await expect(select).toBeFocused();
+    await expect(root).toBeHidden();
+    await select.dispatchEvent("pointerdown", { pointerType: "touch", button: 0,
+      bubbles: true, cancelable: true });
+    await select.dispatchEvent("keydown", { key: "j", bubbles: true, cancelable: true });
+    await select.evaluate((element) => element.add(new Option("Jamaica")));
+    const updated = page.waitForEvent("console", {
+      predicate: (message) => message.text().includes("activation state updated")
+    });
+    await setSettings({ searchMode: "contains" });
+    await updated;
+    await expect(root).toBeHidden();
+    await expect(select).toBeFocused();
+    await expect(select).toHaveJSProperty("selectedIndex", 0);
+    expect(await page.evaluate(() => window.searchEvents)).toEqual({ input: 0, change: 0 });
+    await page.keyboard.press("ArrowDown");
+    await expect(root).toBeHidden();
+    await page.keyboard.press("j");
+    await expect(page.locator("[data-tabby-select-host] .query")).toHaveValue("j");
+    await page.close();
+    await setSettings({ debugLogEnabled: false });
+  });
+}
+
+test("resets user interaction on SPA navigation without reopening for focus", async () => {
   await setSettings({ manualEnabledOverride: true, urlAllowPatterns: "",
-    showSuggestionsOnMouseFocus: false });
+    showSuggestionsOnMouseFocus: true, debugLogEnabled: true });
   const page = await context.newPage();
-  await page.goto(`http://127.0.0.1:${port}/allowed/autofocus`);
-  await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
-  await expect(page.locator("#autoSelect")).toHaveJSProperty("selectedIndex", 0);
+  await page.goto(`http://127.0.0.1:${port}/allowed/search`);
+  const select = page.locator("#searchSelect");
+  const root = page.locator("[data-tabby-select-host] .root");
+  await select.click();
+  await expect(root).toBeVisible();
+  const navigated = page.waitForEvent("console", {
+    predicate: (message) => message.text().includes("activation state updated") &&
+      message.text().includes("/allowed/next")
+  });
+  await page.evaluate(() => history.pushState({}, "", "/allowed/next"));
+  await navigated;
+  await expect(root).toBeHidden();
+  await page.locator("#searchBefore").focus();
+  await select.focus();
+  await expect(root).toBeHidden();
+  await expect(select).toBeFocused();
+  await page.keyboard.press("j");
+  await expect(page.locator("[data-tabby-select-host] .query")).toHaveValue("j");
   await page.close();
+  await setSettings({ debugLogEnabled: false });
 });
 
 test("enabling the extension alone does not reopen a focused select", async () => {
@@ -437,7 +533,7 @@ test("enabling the extension alone does not reopen a focused select", async () =
   await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
   await setSettings({ manualEnabledOverride: true });
   await expect(page.locator("[data-tabby-select-host]")).toHaveCount(0);
-  await page.locator("#before").focus();
+  await page.locator("#before").click();
   await page.locator("#autoSelect").focus();
   await expect(page.locator("[data-tabby-select-host] .query")).toBeFocused();
   await page.close();
@@ -725,10 +821,14 @@ test("describes the mouse focus setting in both manual languages", async () => {
   await expect(page.locator('[data-i18n="setupPickerTitle"]')).toHaveText("Suggestion display");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
     .toContainText("on by default");
+  await expect(page.locator('[data-i18n="setupPickerText"]'))
+    .toContainText("until you interact with the page");
   await page.getByRole("button", { name: "Switch to Japanese" }).click();
   await expect(page.locator('[data-i18n="setupPickerTitle"]')).toHaveText("候補UIの表示");
   await expect(page.locator('[data-i18n="setupPickerText"]'))
     .toContainText("初期設定でオン");
+  await expect(page.locator('[data-i18n="setupPickerText"]'))
+    .toContainText("ページ遷移後、操作するまでは");
   await page.getByRole("button", { name: "英語に切り替える" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await page.close();

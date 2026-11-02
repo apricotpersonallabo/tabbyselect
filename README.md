@@ -73,8 +73,10 @@ If only one store fails, rerun the workflow for that store with the same version
 
 In the settings page, choose **Prefix match** or **Contains match** (default). For example, `Ja` matches `Japan` in prefix mode, while `pan` matches it in contains mode. Both modes ignore case and trim leading and trailing whitespace. Changes are saved automatically and apply to open pages and their iframes.
 
-Focusing a native, single-selection select opens the search field immediately, including
-through Tab navigation and programmatic focus. Mouse clicks open suggestions by
+After you interact with the page, focusing a native, single-selection select opens the
+search field immediately, including through Tab navigation and programmatic focus.
+After navigation, autofocus and delayed scripted focus alone do not open suggestions
+until you interact with the page. Mouse clicks open suggestions by
 default; disable **Show suggestions when clicking a select** in settings to keep
 the browser's native picker on mouse clicks. Touch focus continues to open suggestions.
 Keyboard search is always enabled. Arrow keys move the highlight, Enter/Tab confirm,

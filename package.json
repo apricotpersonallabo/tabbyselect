@@ -1,6 +1,6 @@
 {
   "name": "tabby-select",
-  "version": "1.1.0",
+  "version": "1.1.5",
   "private": true,
   "description": "Development and test tooling for the TabbySelect browser extension.",
   "engines": {

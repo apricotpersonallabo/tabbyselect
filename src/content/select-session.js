@@ -29,6 +29,7 @@
     let composing = false;
     let returningFocus = false;
     let showSuggestionsOnMouseFocus = true;
+    let hasUserInteracted = false;
     let mousePointerSelect = null;
     let lastTouchPointerTime = -Infinity;
     let pointerEndTimer = null;
@@ -40,6 +41,13 @@
     function isNavigationKey(event) {
       return navigationKeys.has(event.key) || navigationKeys.has(event.code) ||
         [27, 37, 38, 39, 40].includes(event.keyCode);
+    }
+
+    function recordUserInteraction(event) {
+      if (event.isTrusted) {
+        hasUserInteracted = true;
+      }
+      return hasUserInteracted;
     }
 
     function getSelectTarget(target) {
@@ -253,7 +261,8 @@
         if (activeSelect === event.target) {
           close();
         }
-        const suppress = mousePointerSelect === event.target && !showSuggestionsOnMouseFocus;
+        const suppress = !hasUserInteracted ||
+          (mousePointerSelect === event.target && !showSuggestionsOnMouseFocus);
         activate(event.target, { suppress });
       }
     }
@@ -331,6 +340,9 @@
     }
 
     function handlePointerDown(event) {
+      if (!recordUserInteraction(event)) {
+        return;
+      }
       const select = pointerTargetSelect(event.target);
       if (pointerEndTimer !== null) {
         clearTimeout(pointerEndTimer);
@@ -353,6 +365,9 @@
     }
 
     function handleMouseDown(event) {
+      if (!recordUserInteraction(event)) {
+        return;
+      }
       // Ignore compatibility mouse events synthesized after a touch.
       if (event.sourceCapabilities?.firesTouchEvents ||
           performance.now() - lastTouchPointerTime < 700) {
@@ -412,6 +427,9 @@
     }
 
     function handleKeydown(event) {
+      if (!recordUserInteraction(event)) {
+        return;
+      }
       const fromQuery = view.isQueryEvent(event);
       const select = fromQuery ? activeSelect : getSelectTarget(event.target);
       if (
@@ -594,6 +612,11 @@
       }
     }
 
+    function resetForNavigation() {
+      hasUserInteracted = false;
+      destroy();
+    }
+
     view.setInputHandlers({
       onInput: handleInput,
       onCompositionStart: handleCompositionStart,
@@ -615,6 +638,7 @@
       setSearchMode,
       setShowSuggestionsOnMouseFocus,
       reposition,
+      resetForNavigation,
       destroy
     });
   };

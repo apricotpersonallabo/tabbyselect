@@ -6,6 +6,7 @@
   const modules = globalThis.TabbySelectContent;
   let debugLogEnabled = false;
   let traceSequence = 0;
+  let currentUrl = null;
 
   function debugLog(message, detail) {
     if (!debugLogEnabled) {
@@ -59,13 +60,17 @@
   const activationController = modules.createActivationController({
     core,
     chromeApi: chrome,
-    onStateChange({ active, settings, url, initialReady }) {
+    onStateChange({ active, settings, url }) {
+      if (currentUrl !== null && currentUrl !== url) {
+        session.resetForNavigation();
+      }
+      currentUrl = url;
       debugLogEnabled = settings.debugLogEnabled;
       session.setSearchMode(settings.searchMode);
       session.setShowSuggestionsOnMouseFocus(settings.showSuggestionsOnMouseFocus);
       session.reposition();
       if (active) {
-        featureRuntime.enable({ checkInitialFocus: initialReady });
+        featureRuntime.enable();
       } else {
         featureRuntime.disable();
       }
